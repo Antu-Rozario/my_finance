@@ -2,6 +2,7 @@ import type { NextAuthConfig } from 'next-auth'
 
 // Edge-compatible auth configuration (no Prisma, no bcrypt)
 export const authConfig = {
+  secret: process.env.AUTH_SECRET,
   pages: {
     signIn: '/auth/login',
     error: '/auth/login',
