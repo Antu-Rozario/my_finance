@@ -16,9 +16,10 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { Loader2, LogIn } from 'lucide-react'
+import Link from 'next/link'
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -137,6 +138,14 @@ export function LoginForm() {
           </form>
         </Form>
       </CardContent>
+      <CardFooter className="flex justify-center">
+        <p className="text-sm text-muted-foreground">
+          Don&apos;t have an account?{' '}
+          <Link href="/auth/register" className="text-primary hover:underline font-medium">
+            Sign up
+          </Link>
+        </p>
+      </CardFooter>
     </Card>
   )
 }
