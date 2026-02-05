@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { formatCurrency, formatDate, getTransactionTypeBadge } from "@/lib/utils"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
-import type { Account } from "@prisma/client"
+import type { FinanceAccount } from "@/generated/prisma/client"
 
 interface Transaction {
     id: number
@@ -27,7 +27,7 @@ interface Transaction {
 }
 
 interface AccountLedgerProps {
-    account: Account
+    account: FinanceAccount
     transactions: Transaction[]
     currentBalance: number
     currencySymbol: string
