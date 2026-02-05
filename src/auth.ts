@@ -76,6 +76,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           throw new Error('Invalid email or password')
         }
 
+        console.log('User authenticated:', { id: user.id, email: user.email, role: user.role })
+
         // Return user without password
         return {
           id: user.id,
@@ -88,6 +90,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
+    ...authConfig.callbacks,
     async jwt({ token, user }) {
       // Add user info to token on sign in
       if (user) {
@@ -96,6 +99,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.email = user.email
         token.name = user.name
         token.picture = user.image
+        console.log('JWT callback - adding to token:', { id: user.id, role: user.role })
       }
       return token
     },
@@ -107,9 +111,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.email = token.email as string
         session.user.name = token.name as string | null
         session.user.image = token.picture as string | null | undefined
+        console.log('Session callback - token role:', token.role, 'session role:', session.user.role)
       }
       return session
     },
   },
-  debug: process.env.NODE_ENV === 'development',
+  debug: true,
 })
