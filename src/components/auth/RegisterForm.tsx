@@ -26,8 +26,10 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { Loader2, UserPlus } from 'lucide-react'
-import { createUser } from '@/actions/users'
+import { registerUser } from '@/actions/users'
 import { UserRole } from '@/generated/prisma/client'
+import { signIn } from 'next-auth/react'
+import Link from 'next/link'
 
 const registerSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100, 'Name is too long'),
@@ -61,7 +63,7 @@ export function RegisterForm() {
     setIsLoading(true)
 
     try {
-      const result = await createUser({
+      const result = await registerUser({
         email: values.email,
         name: values.name,
         password: values.password,
@@ -69,11 +71,26 @@ export function RegisterForm() {
       })
 
       if (result.success) {
-        toast.success('User created successfully')
-        router.push('/admin/users')
-        router.refresh()
+        toast.success('Account created successfully!', {
+          description: 'Logging you in...',
+        })
+
+        // Automatically sign in after registration
+        const signInResult = await signIn('credentials', {
+          email: values.email,
+          password: values.password,
+          redirect: false,
+        })
+
+        if (signInResult?.ok) {
+          router.push('/')
+          router.refresh()
+        } else {
+          toast.error('Account created but login failed. Please try logging in manually.')
+          router.push('/auth/login')
+        }
       } else {
-        toast.error(result.error || 'Failed to create user')
+        toast.error(result.error || 'Failed to create account')
       }
     } catch (error) {
       toast.error('An unexpected error occurred. Please try again.')
@@ -84,11 +101,11 @@ export function RegisterForm() {
   }
 
   return (
-    <Card className="w-full">
+    <Card className="w-full max-w-md">
       <CardHeader>
-        <CardTitle className="text-2xl">Create New User</CardTitle>
+        <CardTitle className="text-2xl">Create Account</CardTitle>
         <CardDescription>
-          Add a new user to the system. Choose their role carefully.
+          Enter your information to create your account
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -201,31 +218,27 @@ export function RegisterForm() {
               )}
             />
 
-            <div className="flex justify-end gap-2 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => router.push('/admin/users')}
-                disabled={isLoading}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  <>
-                    <UserPlus className="mr-2 h-4 w-4" />
-                    Create User
-                  </>
-                )}
-              </Button>
-            </div>
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating account...
+                </>
+              ) : (
+                <>
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Sign Up
+                </>
+              )}
+            </Button>
           </form>
         </Form>
+        <div className="mt-4 text-center text-sm text-muted-foreground">
+          Already have an account?{' '}
+          <Link href="/auth/login" className="text-primary hover:underline font-medium">
+            Sign in
+          </Link>
+        </div>
       </CardContent>
     </Card>
   )

@@ -6,6 +6,43 @@ import { hash } from 'bcryptjs'
 import { requireAdmin, requireAuth } from '@/lib/auth'
 import { UserRole } from '@/generated/prisma/client'
 
+// Public registration - no auth required
+export async function registerUser(data: {
+    email: string
+    name: string
+    password: string
+    role?: UserRole
+}) {
+    // Check if email already exists
+    const existing = await prisma.user.findUnique({
+        where: { email: data.email },
+    })
+
+    if (existing) {
+        return { success: false, error: 'A user with this email already exists' }
+    }
+
+    // Hash password
+    const hashedPassword = await hash(data.password, 10)
+
+    const user = await prisma.user.create({
+        data: {
+            email: data.email,
+            name: data.name,
+            password: hashedPassword,
+            role: data.role || UserRole.USER, // Default to USER role
+        },
+        select: {
+            id: true,
+            email: true,
+            name: true,
+            role: true,
+        },
+    })
+
+    return { success: true, user }
+}
+
 export async function getUsers() {
     await requireAdmin()
 
