@@ -13,21 +13,29 @@ export const authConfig = {
       const isOnAuthPage = nextUrl.pathname.startsWith('/auth/')
       const isOnAdminPage = nextUrl.pathname.startsWith('/admin')
 
-      // Allow access to auth pages
+      // Redirect authenticated users away from auth pages to home
+      if (isOnAuthPage && isLoggedIn) {
+        return Response.redirect(new URL('/', nextUrl))
+      }
+
+      // Allow unauthenticated access to auth pages
       if (isOnAuthPage) {
         return true
       }
 
-      // Require login for all other pages
+      // Require login for protected pages
       if (!isLoggedIn) {
         return false
       }
 
-      // Check admin access
+      // Check admin access (user must be logged in AND have ADMIN role)
       if (isOnAdminPage) {
-        return auth.user.role === 'ADMIN'
+        const isAdmin = auth.user?.role === 'ADMIN'
+        console.log('Admin check:', { role: auth.user?.role, isAdmin })
+        return isAdmin
       }
 
+      // Allow access to all other pages for logged-in users
       return true
     },
   },
