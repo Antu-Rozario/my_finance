@@ -119,7 +119,7 @@ export function PaymentMethodsClient({ paymentMethods }: PaymentMethodsClientPro
                         </DialogHeader>
                         <form action={handleCreate} className="space-y-4">
                             <div className="space-y-2">
-                                <Label htmlFor="name">Method Name</Label>
+                                <Label htmlFor="name">Method Name *</Label>
                                 <Input id="name" name="name" required placeholder="e.g. Credit Card" />
                             </div>
                             <div className="flex justify-end gap-2">
@@ -194,7 +194,7 @@ export function PaymentMethodsClient({ paymentMethods }: PaymentMethodsClientPro
                     {editMethod && (
                         <form action={handleUpdate} className="space-y-4">
                             <div className="space-y-2">
-                                <Label htmlFor="edit-name">Method Name</Label>
+                                <Label htmlFor="edit-name">Method Name *</Label>
                                 <Input
                                     id="edit-name"
                                     name="name"

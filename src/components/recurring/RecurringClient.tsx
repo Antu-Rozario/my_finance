@@ -287,7 +287,7 @@ export function RecurringClient({
 
                 <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                        <Label>Amount</Label>
+                        <Label>Amount *</Label>
                         <Input
                             type="number"
                             name="amount"

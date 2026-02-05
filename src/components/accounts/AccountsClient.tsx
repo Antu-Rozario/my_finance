@@ -127,7 +127,7 @@ export function AccountsClient({ accounts, currencySymbol }: AccountsClientProps
                         </DialogHeader>
                         <form action={handleCreate} className="space-y-4">
                             <div className="space-y-2">
-                                <Label htmlFor="name">Account Name</Label>
+                                <Label htmlFor="name">Account Name *</Label>
                                 <Input id="name" name="name" required placeholder="e.g. City Bank" />
                             </div>
                             <div className="space-y-2">
@@ -232,7 +232,7 @@ export function AccountsClient({ accounts, currencySymbol }: AccountsClientProps
                     {editAccount && (
                         <form action={handleUpdate} className="space-y-4">
                             <div className="space-y-2">
-                                <Label htmlFor="edit-name">Account Name</Label>
+                                <Label htmlFor="edit-name">Account Name *</Label>
                                 <Input
                                     id="edit-name"
                                     name="name"

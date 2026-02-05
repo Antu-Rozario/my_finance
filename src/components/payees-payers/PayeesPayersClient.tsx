@@ -183,7 +183,7 @@ export function PayeesPayersClient({ payeesPayers }: PayeesPayersClientProps) {
                         </DialogHeader>
                         <form action={handleCreate} className="space-y-4">
                             <div className="space-y-2">
-                                <Label htmlFor="name">Name</Label>
+                                <Label htmlFor="name">Name *</Label>
                                 <Input id="name" name="name" required placeholder={`e.g. ${activeTab === 'PAYEE' ? 'Grocery Store' : 'Employer'}`} />
                             </div>
                             <div className="flex justify-end gap-2">
@@ -227,7 +227,7 @@ export function PayeesPayersClient({ payeesPayers }: PayeesPayersClientProps) {
                     {editItem && (
                         <form action={handleUpdate} className="space-y-4">
                             <div className="space-y-2">
-                                <Label htmlFor="edit-name">Name</Label>
+                                <Label htmlFor="edit-name">Name *</Label>
                                 <Input
                                     id="edit-name"
                                     name="name"

@@ -177,7 +177,7 @@ export function CategoriesClient({ categories }: CategoriesClientProps) {
                         </DialogHeader>
                         <form action={handleCreate} className="space-y-4">
                             <div className="space-y-2">
-                                <Label htmlFor="name">Category Name</Label>
+                                <Label htmlFor="name">Category Name *</Label>
                                 <Input id="name" name="name" required placeholder="e.g. Groceries" />
                             </div>
                             <div className="flex justify-end gap-2">
@@ -221,7 +221,7 @@ export function CategoriesClient({ categories }: CategoriesClientProps) {
                     {editCategory && (
                         <form action={handleUpdate} className="space-y-4">
                             <div className="space-y-2">
-                                <Label htmlFor="edit-name">Category Name</Label>
+                                <Label htmlFor="edit-name">Category Name *</Label>
                                 <Input
                                     id="edit-name"
                                     name="name"

@@ -385,7 +385,7 @@ export function TransactionsClient({
                 )}
 
                 <div className="space-y-2">
-                    <Label htmlFor="amount">Amount</Label>
+                    <Label htmlFor="amount">Amount *</Label>
                     <Input
                         type="number"
                         name="amount"
