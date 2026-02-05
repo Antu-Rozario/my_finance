@@ -1,0 +1,279 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================
+// NEXTAUTH V5 MODELS
+// ============================================
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  password      String    // Hashed with bcrypt
+  role          UserRole  @default(USER)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations to NextAuth tables
+  accounts      Account[]
+  sessions      Session[]
+
+  // Relations to finance data
+  financeAccounts       FinanceAccount[]
+  categories            Category[]
+  payeesPayers          PayeePayer[]
+  paymentMethods        PaymentMethod[]
+  transactions          Transaction[]
+  recurringTransactions RecurringTransaction[]
+  settings              Settings[]
+}
+
+// NextAuth OAuth Account model (required by NextAuth even if not using OAuth)
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+}
+
+// ============================================
+// FINANCE APP MODELS (with User scoping)
+// ============================================
+
+// Category types
+enum CategoryType {
+  INCOME
+  EXPENSE
+}
+
+// Payee/Payer types
+enum PayeePayerType {
+  PAYEE
+  PAYER
+}
+
+// Transaction types
+enum TransactionType {
+  INCOME
+  EXPENSE
+  TRANSFER
+}
+
+// Recurring transaction status
+enum RecurringStatus {
+  PAID
+  UNPAID
+  PENDING
+  RECEIVE
+}
+
+// Recurring frequency
+enum RecurringFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+// Bank/Cash Accounts (renamed from Account to avoid conflict)
+model FinanceAccount {
+  id             Int       @id @default(autoincrement())
+  userId         String    // NEW - user ownership
+  name           String    @db.VarChar(60)
+  openingBalance Float     @default(0)
+  note           String?   @db.Text
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions   Transaction[]
+  recurringTransactions RecurringTransaction[]
+
+  // For transfer destination tracking
+  transfersTo    Transaction[] @relation("TransferToAccount")
+
+  @@index([userId])
+}
+
+// Income and Expense Categories
+model Category {
+  id        Int          @id @default(autoincrement())
+  userId    String       // NEW - user ownership
+  name      String       @db.VarChar(60)
+  type      CategoryType
+
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions          Transaction[]
+  recurringTransactions RecurringTransaction[]
+
+  @@unique([userId, name, type])
+  @@index([userId])
+}
+
+// People or entities involved in transactions
+model PayeePayer {
+  id     Int            @id @default(autoincrement())
+  userId String         // NEW - user ownership
+  name   String         @db.VarChar(60)
+  type   PayeePayerType
+
+  user                 User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payerTransactions    Transaction[]          @relation("Payer")
+  payeeTransactions    Transaction[]          @relation("Payee")
+  recurringAsPayer     RecurringTransaction[] @relation("RecurringPayer")
+  recurringAsPayee     RecurringTransaction[] @relation("RecurringPayee")
+
+  @@unique([userId, name, type])
+  @@index([userId])
+}
+
+// How the transaction was processed
+model PaymentMethod {
+  id     Int    @id @default(autoincrement())
+  userId String // NEW - user ownership
+  name   String @db.VarChar(30)
+
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions          Transaction[]
+  recurringTransactions RecurringTransaction[]
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+// Core Transaction Table
+model Transaction {
+  id                  Int             @id @default(autoincrement())
+  userId              String          // NEW - user ownership
+  accountId           Int
+  date                DateTime
+  type                TransactionType
+  categoryId          Int?
+  amount              Float
+  payerId             Int?
+  payeeId             Int?
+  paymentMethodId     Int?
+  reference           String?         @db.VarChar(100)
+  note                String?         @db.Text
+  debit               Float           @default(0)
+  credit              Float           @default(0)
+  balance             Float           @default(0)
+
+  // For transfers - link to the other side of the transfer
+  linkedTransactionId Int?            @unique
+  linkedTransaction   Transaction?    @relation("LinkedTransfer", fields: [linkedTransactionId], references: [id], onDelete: SetNull)
+  linkedBy            Transaction?    @relation("LinkedTransfer")
+
+  // For transfers - the destination account
+  transferToAccountId Int?
+  transferToAccount   FinanceAccount? @relation("TransferToAccount", fields: [transferToAccountId], references: [id])
+
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account       FinanceAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  category      Category?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  payer         PayeePayer?    @relation("Payer", fields: [payerId], references: [id], onDelete: SetNull)
+  payee         PayeePayer?    @relation("Payee", fields: [payeeId], references: [id], onDelete: SetNull)
+  paymentMethod PaymentMethod? @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([userId, accountId, date])
+  @@index([userId, date])
+  @@index([userId, type])
+  @@index([userId, date, type])
+}
+
+// Recurring Transaction Templates
+model RecurringTransaction {
+  id              Int                @id @default(autoincrement())
+  userId          String             // NEW - user ownership
+  accountId       Int
+  type            TransactionType
+  categoryId      Int
+  amount          Float
+  payerId         Int?
+  payeeId         Int?
+  paymentMethodId Int?
+  reference       String?            @db.VarChar(100)
+  status          RecurringStatus    @default(PENDING)
+  description     String?            @db.Text
+  startDate       DateTime
+  nextDate        DateTime?
+  frequency       RecurringFrequency
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account       FinanceAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  category      Category       @relation(fields: [categoryId], references: [id])
+  payer         PayeePayer?    @relation("RecurringPayer", fields: [payerId], references: [id], onDelete: SetNull)
+  payee         PayeePayer?    @relation("RecurringPayee", fields: [payeeId], references: [id], onDelete: SetNull)
+  paymentMethod PaymentMethod? @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, nextDate])
+}
+
+// App-level Settings (now per-user)
+model Settings {
+  id     Int    @id @default(autoincrement())
+  userId String // NEW - user ownership
+  key    String
+  value  String @db.Text
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@index([userId])
+}
