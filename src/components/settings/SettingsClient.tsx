@@ -34,16 +34,16 @@ const timezones = [
 ]
 
 const currencies = [
-    { symbol: '$', name: 'USD - US Dollar' },
-    { symbol: '€', name: 'EUR - Euro' },
-    { symbol: '£', name: 'GBP - British Pound' },
-    { symbol: '¥', name: 'JPY - Japanese Yen' },
-    { symbol: '₹', name: 'INR - Indian Rupee' },
-    { symbol: '৳', name: 'BDT - Bangladeshi Taka' },
-    { symbol: 'C$', name: 'CAD - Canadian Dollar' },
-    { symbol: 'A$', name: 'AUD - Australian Dollar' },
-    { symbol: 'CHF', name: 'CHF - Swiss Franc' },
-    { symbol: '¥', name: 'CNY - Chinese Yuan' },
+    { code: 'USD', symbol: '$', name: 'US Dollar' },
+    { code: 'EUR', symbol: '€', name: 'Euro' },
+    { code: 'GBP', symbol: '£', name: 'British Pound' },
+    { code: 'JPY', symbol: '¥', name: 'Japanese Yen' },
+    { code: 'INR', symbol: '₹', name: 'Indian Rupee' },
+    { code: 'BDT', symbol: '৳', name: 'Bangladeshi Taka' },
+    { code: 'CAD', symbol: 'C$', name: 'Canadian Dollar' },
+    { code: 'AUD', symbol: 'A$', name: 'Australian Dollar' },
+    { code: 'CHF', symbol: 'CHF', name: 'Swiss Franc' },
+    { code: 'CNY', symbol: '¥', name: 'Chinese Yuan' },
 ]
 
 export function SettingsClient({ settings }: SettingsClientProps) {
@@ -144,8 +144,8 @@ export function SettingsClient({ settings }: SettingsClientProps) {
                                 </SelectTrigger>
                                 <SelectContent>
                                     {currencies.map((currency) => (
-                                        <SelectItem key={currency.symbol} value={currency.symbol}>
-                                            {currency.symbol} - {currency.name}
+                                        <SelectItem key={currency.code} value={currency.symbol}>
+                                            {currency.symbol} - {currency.code} - {currency.name}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
