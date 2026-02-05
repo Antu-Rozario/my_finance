@@ -25,6 +25,16 @@ declare module 'next-auth' {
   }
 }
 
+declare module '@auth/core/jwt' {
+  interface JWT {
+    id: string
+    role: UserRole
+    email: string
+    name: string | null
+    picture?: string | null
+  }
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
   session: {

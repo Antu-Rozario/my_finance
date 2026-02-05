@@ -13,11 +13,17 @@ export const authConfig = {
       const isOnAuthPage = nextUrl.pathname.startsWith('/auth/')
       const isOnAdminPage = nextUrl.pathname.startsWith('/admin')
 
+      // In middleware, role might be at auth.role (from JWT) or auth.user.role (from session)
+      const role = (auth as any)?.role || auth?.user?.role
+
       console.log('Middleware check:', {
         path: nextUrl.pathname,
         isLoggedIn,
-        role: auth?.user?.role,
-        isAdmin: auth?.user?.role === 'ADMIN'
+        fullAuth: JSON.stringify(auth),
+        role,
+        userRole: auth?.user?.role,
+        authRole: (auth as any)?.role,
+        isAdmin: role === 'ADMIN'
       })
 
       // Allow unauthenticated access to auth pages
@@ -36,7 +42,7 @@ export const authConfig = {
 
       // Check admin access
       if (isOnAdminPage) {
-        const isAdmin = auth.user?.role === 'ADMIN'
+        const isAdmin = role === 'ADMIN'
         if (!isAdmin) {
           // Redirect non-admin users to home
           return Response.redirect(new URL('/', nextUrl))
