@@ -1,7 +1,11 @@
 import { auth } from './src/auth'
 import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
-import { UserRole } from './generated/prisma/client'
+
+// Define UserRole enum locally to avoid importing Prisma client in Edge runtime
+const UserRole = {
+  USER: 'USER',
+  ADMIN: 'ADMIN',
+} as const
 
 // Public routes that don't require authentication
 const publicRoutes = ['/auth/login', '/auth/register', '/unauthorized']
