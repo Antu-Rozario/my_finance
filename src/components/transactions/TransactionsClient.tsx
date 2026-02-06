@@ -9,15 +9,16 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { formatCurrency, formatDate, formatDateForInput, getTransactionTypeBadge } from "@/lib/utils"
 import { DatePicker } from "@/components/ui/date-picker"
 import { DateRangePicker, type DateRange } from "@/components/ui/date-range-picker"
-import { Plus, Pencil, Trash2, Loader2, ChevronLeft, ChevronRight, Search, ArrowUpDown, ArrowUp, ArrowDown, X } from "lucide-react"
+import { Plus, Pencil, Trash2, Loader2, ChevronLeft, ChevronRight, Search, ArrowUpDown, ArrowUp, ArrowDown, X, Download } from "lucide-react"
 import { createTransaction, updateTransaction, deleteTransaction, deleteMultipleTransactions, getTransactions, getTransactionsCursor, TransactionFilters, CursorPaginationParams, TransactionWithRelations } from "@/actions/transactions"
+import { exportTransactionsToCSV } from "@/lib/export"
 import { toast } from "sonner"
+import { EmptyState } from "@/components/ui/empty-state"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -270,6 +271,25 @@ export function TransactionsClient({
         }
     }, [cursorData.prevCursor, cursorParams, fetchTransactions])
 
+    const handleExport = useCallback(() => {
+        const transactionsToExport = cursorData.transactions.map(t => ({
+            date: t.date,
+            account: t.account.name,
+            type: t.type,
+            category: t.category?.name || '',
+            amount: t.amount,
+            payee: t.payee?.name || '',
+            payer: t.payer?.name || '',
+            paymentMethod: t.paymentMethod?.name || '',
+            reference: t.reference || '',
+            note: t.note || '',
+            transferTo: t.transferToAccount?.name || '',
+        }))
+
+        exportTransactionsToCSV(transactionsToExport)
+        toast.success("Transactions exported successfully")
+    }, [cursorData.transactions])
+
     async function handleCreate(formData: FormData) {
         setIsLoading(true)
         try {
@@ -450,24 +470,26 @@ export function TransactionsClient({
 
                 <div className="space-y-2">
                     <Label>Transaction Type</Label>
-                    <RadioGroup
-                        value={type}
-                        onValueChange={(v) => setType(v as typeof type)}
-                        className="flex gap-4"
-                    >
-                        <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="INCOME" id="income" />
-                            <Label htmlFor="income" className="text-green-600 dark:text-green-400 cursor-pointer">Income</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="EXPENSE" id="expense" />
-                            <Label htmlFor="expense" className="text-red-600 dark:text-red-400 cursor-pointer">Expense</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="TRANSFER" id="transfer" />
-                            <Label htmlFor="transfer" className="text-blue-600 dark:text-blue-400 cursor-pointer">Transfer</Label>
-                        </div>
-                    </RadioGroup>
+                    <div className="flex rounded-lg bg-muted p-1 gap-1">
+                        {([
+                            { value: 'INCOME' as const, label: 'Income', activeClass: 'bg-green-600 text-white shadow-sm hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700' },
+                            { value: 'EXPENSE' as const, label: 'Expense', activeClass: 'bg-red-600 text-white shadow-sm hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700' },
+                            { value: 'TRANSFER' as const, label: 'Transfer', activeClass: 'bg-blue-600 text-white shadow-sm hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700' },
+                        ]).map((option) => (
+                            <button
+                                key={option.value}
+                                type="button"
+                                onClick={() => setType(option.value)}
+                                className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-all ${
+                                    type === option.value
+                                        ? option.activeClass
+                                        : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
+                                }`}
+                            >
+                                {option.label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
 
                 <div className="space-y-2">
@@ -661,6 +683,10 @@ export function TransactionsClient({
                                 <span className="hidden sm:inline">Delete ({selectedIds.length})</span>
                             </Button>
                         )}
+                        <Button variant="outline" size="sm" onClick={handleExport} disabled={cursorData.transactions.length === 0}>
+                            <Download className="h-4 w-4 mr-1 sm:mr-2" />
+                            <span className="hidden sm:inline">Export</span>
+                        </Button>
                         <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
                             <DialogTrigger asChild>
                                 <Button size="sm">
@@ -765,12 +791,16 @@ export function TransactionsClient({
             </CardHeader>
             <CardContent className="px-3 sm:px-6">
                 {cursorData.transactions.length === 0 ? (
-                    <div className="text-center py-12 text-muted-foreground">
-                        <p className="mb-4">No transactions yet. Add your first transaction to get started.</p>
-                        <Button onClick={() => setIsAddOpen(true)}>
-                            <Plus className="mr-2 h-4 w-4" /> Add Transaction
-                        </Button>
-                    </div>
+                    <EmptyState
+                        icon={Search}
+                        title="No transactions found"
+                        description="Try adjusting your filters or add your first transaction to get started."
+                        action={{
+                            label: "Add Transaction",
+                            onClick: () => setIsAddOpen(true),
+                            icon: Plus
+                        }}
+                    />
                 ) : (
                     <>
                         {/* Mobile Card View */}
