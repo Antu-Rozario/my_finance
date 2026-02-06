@@ -1,9 +1,12 @@
 "use client"
 
+import * as React from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatCurrency } from "@/lib/utils"
 import { TrendingUp, TrendingDown, Wallet, DollarSign } from "lucide-react"
 import type { DashboardSummary } from "@/actions/dashboard"
+import { useSearchParams } from "next/navigation"
+import { format } from "date-fns"
 
 interface SummaryCardsProps {
     summary: DashboardSummary
@@ -11,38 +14,49 @@ interface SummaryCardsProps {
 }
 
 export function SummaryCards({ summary, currencySymbol }: SummaryCardsProps) {
+    const searchParams = useSearchParams()
+    const from = searchParams.get("from")
+    const to = searchParams.get("to")
+
+    const dateLabel = React.useMemo(() => {
+        if (from && to) {
+            return `${format(new Date(from), "MMM d, yyyy")} - ${format(new Date(to), "MMM d, yyyy")}`
+        }
+        return "This month"
+    }, [from, to])
+
     const cards = [
         {
             title: "Total Income",
             value: summary.totalIncome,
             icon: TrendingUp,
-            className: "text-green-600 dark:text-green-400",
-            bgClassName: "bg-green-100 dark:bg-green-900/30",
+            className: "text-[#0F9D58]", // Google Green 500
+            bgClassName: "bg-[#0F9D58]/10",
         },
         {
             title: "Total Expenses",
             value: summary.totalExpenses,
             icon: TrendingDown,
-            className: "text-red-600 dark:text-red-400",
-            bgClassName: "bg-red-100 dark:bg-red-900/30",
+            className: "text-[#DB4437]", // Google Red 500
+            bgClassName: "bg-[#DB4437]/10",
         },
         {
             title: "Net Balance",
             value: summary.netBalance,
             icon: DollarSign,
             className: summary.netBalance >= 0
-                ? "text-green-600 dark:text-green-400"
-                : "text-red-600 dark:text-red-400",
+                ? "text-[#4285F4]" // Google Blue 500
+                : "text-[#DB4437]", // Google Red 500
             bgClassName: summary.netBalance >= 0
-                ? "bg-green-100 dark:bg-green-900/30"
-                : "bg-red-100 dark:bg-red-900/30",
+                ? "bg-[#4285F4]/10"
+                : "bg-[#DB4437]/10",
         },
         {
             title: "Total Balance",
             value: summary.totalAccountBalance,
             icon: Wallet,
-            className: "text-blue-600 dark:text-blue-400",
-            bgClassName: "bg-blue-100 dark:bg-blue-900/30",
+            className: "text-[#F4B400]", // Google Yellow 500
+            bgClassName: "bg-[#F4B400]/10",
         },
     ]
 
@@ -63,7 +77,7 @@ export function SummaryCards({ summary, currencySymbol }: SummaryCardsProps) {
                             {formatCurrency(card.value, currencySymbol)}
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">
-                            This month
+                            {card.title === "Total Balance" ? "Current" : dateLabel}
                         </p>
                     </CardContent>
                 </Card>

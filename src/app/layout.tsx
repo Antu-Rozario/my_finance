@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { ClientProviders } from "@/components/providers/ClientProviders";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Toaster } from "@/components/ui/sonner";
+import { CommandPalette } from "@/components/layout/CommandPalette";
 import { auth } from "@/auth";
 
 const inter = Inter({
@@ -37,6 +38,7 @@ export default async function RootLayout({
           >
             {user ? (
               <div className="flex min-h-screen">
+                <CommandPalette />
                 {/* Desktop Sidebar - Only show when authenticated */}
                 <aside className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 border-r bg-background">
                   <Sidebar user={user} />

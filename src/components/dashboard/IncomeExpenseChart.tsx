@@ -42,8 +42,8 @@ export const IncomeExpenseChart = memo(function IncomeExpenseChart({ data, curre
                                 labelStyle={{ color: 'hsl(var(--foreground))' }}
                             />
                             <Legend />
-                            <Bar dataKey="income" name="Income" fill="#22c55e" radius={[4, 4, 0, 0]} />
-                            <Bar dataKey="expenses" name="Expenses" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="income" name="Income" fill="#4285F4" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="expenses" name="Expenses" fill="#DB4437" radius={[4, 4, 0, 0]} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>

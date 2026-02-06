@@ -32,19 +32,34 @@ export type AccountBalance = {
 }
 
 const CHART_COLORS = [
-    '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16',
-    '#22c55e', '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9',
-    '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#d946ef',
+    '#4285F4', // Blue 500
+    '#DB4437', // Red 500
+    '#F4B400', // Yellow 500
+    '#0F9D58', // Green 500
+    '#AB47BC', // Purple 500
+    '#00ACC1', // Cyan 500
+    '#FF7043', // Deep Orange 500
+    '#9E9D24', // Lime 800
+    '#5C6BC0', // Indigo 500
+    '#F06292', // Pink 300
+    '#4DB6AC', // Teal 300
+    '#C0CA33', // Lime 500
+    '#795548', // Brown 500
+    '#78909C', // Blue Grey 500
+    '#37474F', // Blue Grey 800
 ]
 
-export async function getDashboardSummary(): Promise<DashboardSummary> {
+export async function getDashboardSummary(
+    startDate?: Date,
+    endDate?: Date
+): Promise<DashboardSummary> {
     const user = await requireAuth()
     const now = new Date()
-    const monthStart = startOfMonth(now)
-    const monthEnd = endOfMonth(now)
+    const monthStart = startDate || startOfMonth(now)
+    const monthEnd = endDate || endOfMonth(now)
 
     const [incomeResult, expenseResult, accounts] = await Promise.all([
-        // Total income this month
+        // Total income in range
         prisma.transaction.aggregate({
             where: {
                 userId: user.id,
@@ -53,7 +68,7 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
             },
             _sum: { amount: true },
         }),
-        // Total expenses this month
+        // Total expenses in range
         prisma.transaction.aggregate({
             where: {
                 userId: user.id,
@@ -153,11 +168,14 @@ export async function getMonthlyData(): Promise<MonthlyData[]> {
     return months
 }
 
-export async function getCategoryBreakdown(): Promise<CategoryBreakdown[]> {
+export async function getCategoryBreakdown(
+    startDate?: Date,
+    endDate?: Date
+): Promise<CategoryBreakdown[]> {
     const user = await requireAuth()
     const now = new Date()
-    const monthStart = startOfMonth(now)
-    const monthEnd = endOfMonth(now)
+    const monthStart = startDate || startOfMonth(now)
+    const monthEnd = endDate || endOfMonth(now)
 
     const expenses = await prisma.transaction.groupBy({
         by: ['categoryId'],
@@ -226,11 +244,21 @@ export async function getAccountBalances(): Promise<AccountBalance[]> {
     return accountBalances
 }
 
-export async function getRecentTransactions(limit: number = 10) {
+export async function getRecentTransactions(
+    limit: number = 10,
+    startDate?: Date,
+    endDate?: Date
+) {
     const user = await requireAuth()
     return prisma.transaction.findMany({
         where: {
             userId: user.id,
+            ...(startDate || endDate ? {
+                date: {
+                    ...(startDate ? { gte: startDate } : {}),
+                    ...(endDate ? { lte: endDate } : {}),
+                }
+            } : {})
         },
         take: limit,
         orderBy: { date: 'desc' },
