@@ -13,6 +13,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { formatCurrency, formatDate, formatDateForInput, getTransactionTypeBadge } from "@/lib/utils"
+import { DatePicker } from "@/components/ui/date-picker"
+import { DateRangePicker, type DateRange } from "@/components/ui/date-range-picker"
 import { Plus, Pencil, Trash2, Loader2, ChevronLeft, ChevronRight, Search, ArrowUpDown, ArrowUp, ArrowDown, X } from "lucide-react"
 import { createTransaction, updateTransaction, deleteTransaction, deleteMultipleTransactions, getTransactions, getTransactionsCursor, TransactionFilters, CursorPaginationParams, TransactionWithRelations } from "@/actions/transactions"
 import { toast } from "sonner"
@@ -125,8 +127,7 @@ export function TransactionsClient({
     const [typeFilter, setTypeFilter] = useState<'ALL' | 'INCOME' | 'EXPENSE' | 'TRANSFER'>('ALL')
     const [accountFilter, setAccountFilter] = useState<number | null>(null)
     const [categoryFilter, setCategoryFilter] = useState<number | null>(null)
-    const [startDate, setStartDate] = useState<string>('')
-    const [endDate, setEndDate] = useState<string>('')
+    const [filterDateRange, setFilterDateRange] = useState<DateRange | undefined>(undefined)
 
     // Cursor pagination params
     const [cursorParams, setCursorParams] = useState<CursorPaginationParams>({
@@ -181,19 +182,12 @@ export function TransactionsClient({
     }, [])
 
     // Handle date range filter
-    const handleStartDate = useCallback((date: string) => {
-        setStartDate(date)
+    const handleFilterDateRange = useCallback((range: DateRange | undefined) => {
+        setFilterDateRange(range)
         setActiveFilters(prev => ({
             ...prev,
-            startDate: date ? new Date(date) : undefined,
-        }))
-    }, [])
-
-    const handleEndDate = useCallback((date: string) => {
-        setEndDate(date)
-        setActiveFilters(prev => ({
-            ...prev,
-            endDate: date ? new Date(date + 'T23:59:59') : undefined,
+            startDate: range?.from || undefined,
+            endDate: range?.to ? new Date(range.to.getFullYear(), range.to.getMonth(), range.to.getDate(), 23, 59, 59) : undefined,
         }))
     }, [])
 
@@ -203,8 +197,7 @@ export function TransactionsClient({
         setTypeFilter('ALL')
         setAccountFilter(null)
         setCategoryFilter(null)
-        setStartDate('')
-        setEndDate('')
+        setFilterDateRange(undefined)
         setActiveFilters({})
     }, [])
 
@@ -410,6 +403,9 @@ export function TransactionsClient({
         const [type, setType] = useState<'INCOME' | 'EXPENSE' | 'TRANSFER'>(
             defaultValues?.type || transactionType
         )
+        const [formDate, setFormDate] = useState<Date | undefined>(
+            defaultValues?.date ? new Date(defaultValues.date) : new Date()
+        )
 
         const handleFormSubmit = (formData: FormData) => {
             // Validate required fields
@@ -492,11 +488,11 @@ export function TransactionsClient({
 
                 <div className="space-y-2">
                     <Label htmlFor="date">Date *</Label>
-                    <Input
-                        type="date"
-                        name="date"
-                        required
-                        defaultValue={defaultValues ? formatDateForInput(defaultValues.date) : formatDateForInput(new Date())}
+                    <input type="hidden" name="date" value={formDate ? formatDateForInput(formDate) : ''} />
+                    <DatePicker
+                        value={formDate}
+                        onChange={setFormDate}
+                        className="w-full h-9"
                     />
                 </div>
 
@@ -696,12 +692,12 @@ export function TransactionsClient({
                         />
                     </div>
 
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                         <Select
                             value={typeFilter}
                             onValueChange={(value) => handleTypeFilter(value as typeof typeFilter)}
                         >
-                            <SelectTrigger className="h-8 text-xs sm:text-sm">
+                            <SelectTrigger className="h-8 text-xs sm:text-sm w-auto">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -716,7 +712,7 @@ export function TransactionsClient({
                             value={accountFilter?.toString() || 'all'}
                             onValueChange={(value) => handleAccountFilter(value === 'all' ? null : parseInt(value))}
                         >
-                            <SelectTrigger className="h-8 text-xs sm:text-sm">
+                            <SelectTrigger className="h-8 text-xs sm:text-sm w-auto">
                                 <SelectValue placeholder="Account" />
                             </SelectTrigger>
                             <SelectContent>
@@ -733,7 +729,7 @@ export function TransactionsClient({
                             value={categoryFilter?.toString() || 'all'}
                             onValueChange={(value) => handleCategoryFilter(value === 'all' ? null : parseInt(value))}
                         >
-                            <SelectTrigger className="h-8 text-xs sm:text-sm">
+                            <SelectTrigger className="h-8 text-xs sm:text-sm w-auto">
                                 <SelectValue placeholder="Category" />
                             </SelectTrigger>
                             <SelectContent>
@@ -745,23 +741,15 @@ export function TransactionsClient({
                                 ))}
                             </SelectContent>
                         </Select>
-                    </div>
 
-                    <div className="flex items-center gap-2">
-                        <Input
-                            type="date"
-                            value={startDate}
-                            onChange={(e) => handleStartDate(e.target.value)}
-                            className="h-8 text-xs sm:text-sm flex-1 min-w-0"
+                        <DateRangePicker
+                            value={filterDateRange}
+                            onChange={handleFilterDateRange}
+                            placeholder="Date range"
+                            className="h-8 text-xs sm:text-sm"
                         />
-                        <span className="text-muted-foreground text-xs shrink-0">to</span>
-                        <Input
-                            type="date"
-                            value={endDate}
-                            onChange={(e) => handleEndDate(e.target.value)}
-                            className="h-8 text-xs sm:text-sm flex-1 min-w-0"
-                        />
-                        {(searchQuery || typeFilter !== 'ALL' || accountFilter || categoryFilter || startDate || endDate) && (
+
+                        {(searchQuery || typeFilter !== 'ALL' || accountFilter || categoryFilter || filterDateRange) && (
                             <Button
                                 variant="ghost"
                                 size="icon"

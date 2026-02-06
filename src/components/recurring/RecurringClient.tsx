@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Badge } from "@/components/ui/badge"
 import { formatCurrency, formatDate, formatDateForInput } from "@/lib/utils"
+import { DatePicker } from "@/components/ui/date-picker"
 import { Plus, Pencil, Trash2, Loader2, Play } from "lucide-react"
 import {
     createRecurringTransaction,
@@ -228,6 +229,9 @@ export function RecurringClient({
             // Filter out TRANSFER as it's not supported for recurring transactions
             return defaultType === 'INCOME' || defaultType === 'EXPENSE' ? defaultType : transactionType
         })
+        const [formStartDate, setFormStartDate] = useState<Date | undefined>(
+            defaultValues?.startDate ? new Date(defaultValues.startDate) : new Date()
+        )
 
         return (
             <form action={onSubmit} className="space-y-4">
@@ -318,10 +322,11 @@ export function RecurringClient({
                 <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
                         <Label>Start Date</Label>
-                        <Input
-                            type="date"
-                            name="startDate"
-                            defaultValue={defaultValues ? formatDateForInput(defaultValues.startDate) : formatDateForInput(new Date())}
+                        <input type="hidden" name="startDate" value={formStartDate ? formatDateForInput(formStartDate) : ''} />
+                        <DatePicker
+                            value={formStartDate}
+                            onChange={setFormStartDate}
+                            className="w-full h-9"
                         />
                     </div>
 
