@@ -98,6 +98,20 @@ interface TransactionsClientProps {
     payeesPayers: PayeePayer[]
     paymentMethods: PaymentMethod[]
     currencySymbol: string
+    timezone: string
+}
+
+function parseDateInTimezone(dateStr: string, tz: string): Date {
+    const [year, month, day] = dateStr.split('-').map(Number)
+    // Start with noon UTC as a baseline
+    const utcNoon = new Date(Date.UTC(year, month - 1, day, 12, 0, 0))
+    // Determine the offset between UTC and the target timezone at this instant
+    const utcParts = new Intl.DateTimeFormat('en-CA', { timeZone: 'UTC', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(utcNoon)
+    const tzParts = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(utcNoon)
+    const toMs = (s: string) => new Date(s.replace(', ', 'T')).getTime()
+    const offset = toMs(utcParts) - toMs(tzParts)
+    // Shift so that noon lands in the target timezone
+    return new Date(utcNoon.getTime() + offset)
 }
 
 export function TransactionsClient({
@@ -107,6 +121,7 @@ export function TransactionsClient({
     payeesPayers,
     paymentMethods,
     currencySymbol,
+    timezone,
 }: TransactionsClientProps) {
     // State for cursor-based pagination
     const [cursorData, setCursorData] = useState<CursorPaginationData>({
@@ -295,7 +310,7 @@ export function TransactionsClient({
         try {
             const result = await createTransaction({
                 accountId: parseInt(formData.get('accountId') as string),
-                date: new Date(formData.get('date') as string),
+                date: parseDateInTimezone(formData.get('date') as string, timezone),
                 type: formData.get('type') as 'INCOME' | 'EXPENSE' | 'TRANSFER',
                 categoryId: formData.get('categoryId') ? parseInt(formData.get('categoryId') as string) : null,
                 amount: parseFloat(formData.get('amount') as string),
@@ -331,7 +346,7 @@ export function TransactionsClient({
             const type = formData.get('type') as 'INCOME' | 'EXPENSE' | 'TRANSFER'
             const result = await updateTransaction(editTransaction.id, {
                 accountId: parseInt(formData.get('accountId') as string),
-                date: new Date(formData.get('date') as string),
+                date: parseDateInTimezone(formData.get('date') as string, timezone),
                 type,
                 categoryId: formData.get('categoryId') ? parseInt(formData.get('categoryId') as string) : null,
                 amount: parseFloat(formData.get('amount') as string),

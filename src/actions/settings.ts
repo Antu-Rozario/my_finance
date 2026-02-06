@@ -55,7 +55,12 @@ export async function getSetting(key: string): Promise<string> {
 
 export async function updateSettings(data: SettingsFormData) {
     const user = await requireAuth()
-    const validated = settingsSchema.parse(data)
+    const parsed = settingsSchema.safeParse(data)
+    if (!parsed.success) {
+        const message = parsed.error.issues.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
+        return { success: false, error: message }
+    }
+    const validated = parsed.data
 
     const entries = Object.entries(validated) as [string, string][]
 

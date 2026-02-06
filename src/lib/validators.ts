@@ -75,7 +75,11 @@ export const settingsSchema = z.object({
     email_address: z.string().email().optional().or(z.literal('')),
     address: z.string().optional(),
     phone: z.string().optional(),
-    website: z.string().url().optional().or(z.literal('')),
+    website: z.string().transform(v => {
+        const trimmed = v.trim()
+        if (trimmed && !/^https?:\/\//i.test(trimmed)) return `https://${trimmed}`
+        return trimmed
+    }).pipe(z.union([z.literal(''), z.string().url('Please enter a valid website URL')])).optional(),
     timezone: z.string().min(1, 'Timezone is required'),
 })
 

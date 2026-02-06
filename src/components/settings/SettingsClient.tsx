@@ -43,7 +43,7 @@ const currencies = [
     { code: 'CAD', symbol: 'C$', name: 'Canadian Dollar' },
     { code: 'AUD', symbol: 'A$', name: 'Australian Dollar' },
     { code: 'CHF', symbol: 'CHF', name: 'Swiss Franc' },
-    { code: 'CNY', symbol: '¥', name: 'Chinese Yuan' },
+    { code: 'CNY', symbol: 'CN¥', name: 'Chinese Yuan' },
 ]
 
 export function SettingsClient({ settings }: SettingsClientProps) {
@@ -58,7 +58,7 @@ export function SettingsClient({ settings }: SettingsClientProps) {
             if (result.success) {
                 toast.success('Settings saved successfully')
             } else {
-                toast.error('Failed to save settings')
+                toast.error(result.error || 'Failed to save settings')
             }
         } catch (error) {
             toast.error('An error occurred')

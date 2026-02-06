@@ -28,6 +28,7 @@ export default async function TransactionsPage() {
                     payeesPayers={payeesPayers}
                     paymentMethods={paymentMethods}
                     currencySymbol={settings.currency_code}
+                    timezone={settings.timezone}
                 />
             </div>
         </>

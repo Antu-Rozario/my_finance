@@ -121,7 +121,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.email = token.email as string
         session.user.name = token.name as string | null
         session.user.image = token.picture as string | null | undefined
-        console.log('Session callback - token role:', token.role, 'session role:', session.user.role)
       }
       return session
     },
