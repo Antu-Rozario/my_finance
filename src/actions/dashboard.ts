@@ -62,18 +62,10 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
             },
             _sum: { amount: true },
         }),
-        // All accounts with their transactions for balance calculation
+        // All accounts
         prisma.financeAccount.findMany({
             where: {
                 userId: user.id,
-            },
-            include: {
-                transactions: {
-                    where: {
-                        userId: user.id,
-                    },
-                    select: { credit: true, debit: true },
-                },
             },
         }),
     ])
@@ -81,14 +73,16 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
     const totalIncome = incomeResult._sum.amount || 0
     const totalExpenses = expenseResult._sum.amount || 0
 
-    // Calculate total account balance
-    const totalAccountBalance = accounts.reduce((sum, account) => {
-        const balance = account.transactions.reduce(
-            (acc, t) => acc + t.credit - t.debit,
-            0
-        )
-        return sum + balance
-    }, 0)
+    // Calculate total account balance by getting latest transaction for each account
+    let totalAccountBalance = 0
+    for (const account of accounts) {
+        const latestTransaction = await prisma.transaction.findFirst({
+            where: { accountId: account.id, userId: user.id },
+            orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+            select: { balance: true },
+        })
+        totalAccountBalance += latestTransaction?.balance ?? account.openingBalance
+    }
 
     return {
         totalIncome,
@@ -209,25 +203,27 @@ export async function getAccountBalances(): Promise<AccountBalance[]> {
         where: {
             userId: user.id,
         },
-        include: {
-            transactions: {
-                where: {
-                    userId: user.id,
-                },
-                select: { credit: true, debit: true },
-            },
-        },
         orderBy: { name: 'asc' },
     })
 
-    return accounts.map(account => ({
-        id: account.id,
-        name: account.name,
-        balance: account.transactions.reduce(
-            (sum, t) => sum + t.credit - t.debit,
-            0
-        ),
-    }))
+    // Get latest transaction balance for each account
+    const accountBalances = await Promise.all(
+        accounts.map(async (account) => {
+            const latestTransaction = await prisma.transaction.findFirst({
+                where: { accountId: account.id, userId: user.id },
+                orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+                select: { balance: true },
+            })
+
+            return {
+                id: account.id,
+                name: account.name,
+                balance: latestTransaction?.balance ?? account.openingBalance,
+            }
+        })
+    )
+
+    return accountBalances
 }
 
 export async function getRecentTransactions(limit: number = 10) {

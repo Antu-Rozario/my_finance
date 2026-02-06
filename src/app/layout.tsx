@@ -43,7 +43,7 @@ export default async function RootLayout({
                 </aside>
 
                 {/* Main Content */}
-                <main className="flex-1 md:pl-64">
+                <main className="flex-1 min-w-0 md:pl-64">
                   <div className="min-h-screen">
                     {children}
                   </div>

@@ -12,32 +12,31 @@ export async function getAccounts() {
     const accounts = await prisma.financeAccount.findMany({
         where: { userId: user.id },
         orderBy: { name: 'asc' },
-        include: {
-            transactions: {
-                where: { userId: user.id },
-                select: {
-                    id: true,
-                    credit: true,
-                    debit: true,
-                },
-            },
-        },
     })
 
-    return accounts.map(account => {
-        // Calculate current balance from opening balance + all transactions
-        const currentBalance = account.transactions.reduce(
-            (sum, t) => sum + t.credit - t.debit,
-            0
-        )
+    // Get the latest transaction for each account to get current balance
+    const accountsWithBalances = await Promise.all(
+        accounts.map(async (account) => {
+            const [latestTransaction, transactionCount] = await Promise.all([
+                prisma.transaction.findFirst({
+                    where: { accountId: account.id, userId: user.id },
+                    orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+                    select: { balance: true },
+                }),
+                prisma.transaction.count({
+                    where: { accountId: account.id, userId: user.id },
+                }),
+            ])
 
-        return {
-            ...account,
-            currentBalance,
-            transactionCount: account.transactions.length,
-            transactions: undefined,
-        }
-    })
+            return {
+                ...account,
+                currentBalance: latestTransaction?.balance ?? account.openingBalance,
+                transactionCount,
+            }
+        })
+    )
+
+    return accountsWithBalances
 }
 
 export async function getAccount(id: number) {
@@ -77,8 +76,8 @@ export async function getAccountWithTransactions(id: number, startDate?: Date, e
         },
     })
 
-    // Recalculate running balance
-    let runningBalance = 0
+    // Recalculate running balance starting from opening balance
+    let runningBalance = account.openingBalance
     const transactionsWithBalance = transactions.map(t => {
         runningBalance += t.credit - t.debit
         return { ...t, balance: runningBalance }

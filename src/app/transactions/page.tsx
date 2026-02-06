@@ -20,7 +20,7 @@ export default async function TransactionsPage() {
     return (
         <>
             <Header title="Transactions" />
-            <div className="p-4 md:p-6">
+            <div className="p-2 sm:p-4 md:p-6 overflow-hidden">
                 <TransactionsClient
                     initialTransactions={transactionsData}
                     accounts={accounts}
