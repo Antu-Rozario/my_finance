@@ -57,6 +57,12 @@ interface ReportsClientProps {
 
 const COLORS = ['#4285F4', '#DB4437', '#F4B400', '#0F9D58', '#AB47BC', '#00ACC1', '#FF7043', '#9E9D24', '#5C6BC0', '#F06292']
 
+function endOfDay(date: Date): Date {
+    const d = new Date(date)
+    d.setHours(23, 59, 59, 999)
+    return d
+}
+
 export function ReportsClient({ accounts, currencySymbol }: ReportsClientProps) {
     const [activeTab, setActiveTab] = useState('income-expense')
     const [isLoading, setIsLoading] = useState(false)
@@ -95,7 +101,7 @@ export function ReportsClient({ accounts, currencySymbol }: ReportsClientProps) 
         if (!dateRange?.from || !dateRange?.to) return
         setIsLoading(true)
         try {
-            const data = await getIncomeExpenseReport(dateRange.from, dateRange.to)
+            const data = await getIncomeExpenseReport(dateRange.from, endOfDay(dateRange.to))
             setIncomeExpenseData(data)
         } catch (error) {
             console.error(error)
@@ -108,7 +114,7 @@ export function ReportsClient({ accounts, currencySymbol }: ReportsClientProps) 
         if (!dateRange?.from || !dateRange?.to) return
         setIsLoading(true)
         try {
-            const data = await getCategoryReport(dateRange.from, dateRange.to, categoryType)
+            const data = await getCategoryReport(dateRange.from, endOfDay(dateRange.to), categoryType)
             setCategoryData(data)
         } catch (error) {
             console.error(error)
@@ -121,7 +127,7 @@ export function ReportsClient({ accounts, currencySymbol }: ReportsClientProps) 
         if (!selectedAccountId || !dateRange?.from || !dateRange?.to) return
         setIsLoading(true)
         try {
-            const data = await getAccountStatement(parseInt(selectedAccountId), dateRange.from, dateRange.to)
+            const data = await getAccountStatement(parseInt(selectedAccountId), dateRange.from, endOfDay(dateRange.to))
             setAccountStatement(data)
         } catch (error) {
             console.error(error)
@@ -134,7 +140,7 @@ export function ReportsClient({ accounts, currencySymbol }: ReportsClientProps) 
         if (!dateRange?.from || !dateRange?.to) return
         setIsLoading(true)
         try {
-            const data = await getCashFlowReport(dateRange.from, dateRange.to)
+            const data = await getCashFlowReport(dateRange.from, endOfDay(dateRange.to))
             setCashFlowData(data)
         } catch (error) {
             console.error(error)
@@ -148,7 +154,7 @@ export function ReportsClient({ accounts, currencySymbol }: ReportsClientProps) 
         if (!dateRange?.from || !dateRange?.to) return
         setIsLoading(true)
         try {
-            const data = await getPayeePayerAnalysis(dateRange.from, dateRange.to)
+            const data = await getPayeePayerAnalysis(dateRange.from, endOfDay(dateRange.to))
             setPayeePayerData(data)
         } catch (error) {
             console.error(error)
@@ -161,7 +167,7 @@ export function ReportsClient({ accounts, currencySymbol }: ReportsClientProps) 
         if (!dateRange?.from || !dateRange?.to) return
         setIsLoading(true)
         try {
-            const data = await getCategoryTrends(dateRange.from, dateRange.to, categoryTrendType)
+            const data = await getCategoryTrends(dateRange.from, endOfDay(dateRange.to), categoryTrendType)
             setCategoryTrendData(data)
         } catch (error) {
             console.error(error)
@@ -174,7 +180,7 @@ export function ReportsClient({ accounts, currencySymbol }: ReportsClientProps) 
         if (!dateRange?.from || !dateRange?.to) return
         setIsLoading(true)
         try {
-            const data = await getPaymentMethodBreakdown(dateRange.from, dateRange.to)
+            const data = await getPaymentMethodBreakdown(dateRange.from, endOfDay(dateRange.to))
             setPaymentMethodData(data)
         } catch (error) {
             console.error(error)
@@ -203,7 +209,7 @@ export function ReportsClient({ accounts, currencySymbol }: ReportsClientProps) 
         if (!dateRange?.from || !dateRange?.to) return
         setIsLoading(true)
         try {
-            const data = await getDailySpendingPattern(dateRange.from, dateRange.to)
+            const data = await getDailySpendingPattern(dateRange.from, endOfDay(dateRange.to))
             setDailySpendingData(data)
         } catch (error) {
             console.error(error)
@@ -216,7 +222,7 @@ export function ReportsClient({ accounts, currencySymbol }: ReportsClientProps) 
         if (!dateRange?.from || !dateRange?.to) return
         setIsLoading(true)
         try {
-            const data = await getSavingsRate(dateRange.from, dateRange.to)
+            const data = await getSavingsRate(dateRange.from, endOfDay(dateRange.to))
             setSavingsRateData(data)
         } catch (error) {
             console.error(error)
@@ -229,7 +235,7 @@ export function ReportsClient({ accounts, currencySymbol }: ReportsClientProps) 
         if (!dateRange?.from || !dateRange?.to) return
         setIsLoading(true)
         try {
-            const data = await getNetWorthOverTime(dateRange.from, dateRange.to)
+            const data = await getNetWorthOverTime(dateRange.from, endOfDay(dateRange.to))
             setNetWorthData(data)
         } catch (error) {
             console.error(error)
@@ -242,7 +248,7 @@ export function ReportsClient({ accounts, currencySymbol }: ReportsClientProps) 
         if (!dateRange?.from || !dateRange?.to) return
         setIsLoading(true)
         try {
-            const data = await getTaxSummary(dateRange.from, dateRange.to)
+            const data = await getTaxSummary(dateRange.from, endOfDay(dateRange.to))
             setTaxSummaryData(data)
         } catch (error) {
             console.error(error)

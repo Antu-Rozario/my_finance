@@ -2,7 +2,7 @@
 
 import prisma from '@/lib/prisma'
 import { TransactionType } from '@/generated/prisma/client'
-import { startOfMonth, endOfMonth, format } from 'date-fns'
+import { endOfMonth, format } from 'date-fns'
 import { requireAuth } from '@/lib/auth'
 
 export type IncomeExpenseData = {
@@ -517,7 +517,7 @@ export async function getNetWorthOverTime(startDate: Date, endDate: Date): Promi
     return months.map(monthEnd => {
         let netWorth = 0
         for (const account of accounts) {
-            let balance = account.openingBalance
+            let balance = 0
             const accountTxs = txByAccount.get(account.id) || []
             for (const t of accountTxs) {
                 if (t.date <= monthEnd) balance += t.credit - t.debit
@@ -579,13 +579,6 @@ export async function getTaxSummary(startDate: Date, endDate: Date): Promise<Tax
 export async function getCashFlowReport(startDate: Date, endDate: Date) {
     const user = await requireAuth()
 
-    // Get all accounts
-    const accounts = await prisma.financeAccount.findMany({
-        where: {
-            userId: user.id,
-        },
-    })
-
     // Calculate total opening balance (before start date)
     const priorTransactions = await prisma.transaction.aggregate({
         where: {
@@ -595,8 +588,7 @@ export async function getCashFlowReport(startDate: Date, endDate: Date) {
         _sum: { credit: true, debit: true },
     })
 
-    const accountOpeningBalances = accounts.reduce((sum, a) => sum + a.openingBalance, 0)
-    let openingBalance = accountOpeningBalances + (priorTransactions._sum.credit || 0) - (priorTransactions._sum.debit || 0)
+    let openingBalance = (priorTransactions._sum.credit || 0) - (priorTransactions._sum.debit || 0)
 
     // Get all transactions in range grouped by month
     const transactions = await prisma.transaction.findMany({
