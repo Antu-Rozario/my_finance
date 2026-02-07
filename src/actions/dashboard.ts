@@ -2,8 +2,8 @@
 
 import prisma from '@/lib/prisma'
 import { TransactionType } from '@/generated/prisma/client'
-import { startOfMonth, endOfMonth, subMonths, format } from 'date-fns'
 import { requireAuth } from '@/lib/auth'
+import { formatInTz, toMidnightUTC, toEndOfDayUTC, getMonthKeyInTz, getYearInTz, getMonthInTz } from '@/lib/dateUtils'
 
 export type DashboardSummary = {
     totalIncome: number
@@ -51,12 +51,31 @@ const CHART_COLORS = [
 
 export async function getDashboardSummary(
     startDate?: Date,
-    endDate?: Date
+    endDate?: Date,
+    tz?: string
 ): Promise<DashboardSummary> {
     const user = await requireAuth()
-    const now = new Date()
-    const monthStart = startDate || startOfMonth(now)
-    const monthEnd = endDate || endOfMonth(now)
+
+    // Default to current month in user's timezone
+    let monthStart = startDate
+    let monthEnd = endDate
+    if (!monthStart || !monthEnd) {
+        const now = new Date()
+        if (tz) {
+            const year = getYearInTz(now, tz)
+            const month = getMonthInTz(now, tz)
+            const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`
+            monthStart = toMidnightUTC(`${monthStr}-01`, tz)
+            // End of month: midnight of first day of next month minus 1ms
+            const nextMonth = month === 11 ? 0 : month + 1
+            const nextYear = month === 11 ? year + 1 : year
+            monthEnd = new Date(toMidnightUTC(`${nextYear}-${String(nextMonth + 1).padStart(2, '0')}-01`, tz).getTime() - 1)
+        } else {
+            const { startOfMonth, endOfMonth } = await import('date-fns')
+            monthStart = startOfMonth(now)
+            monthEnd = endOfMonth(now)
+        }
+    }
 
     const [incomeResult, expenseResult, accounts] = await Promise.all([
         // Total income in range
@@ -107,13 +126,25 @@ export async function getDashboardSummary(
     }
 }
 
-export async function getMonthlyData(): Promise<MonthlyData[]> {
+export async function getMonthlyData(tz: string): Promise<MonthlyData[]> {
     const user = await requireAuth()
     const now = new Date()
 
-    // Calculate date range for all 12 months
-    const startDate = startOfMonth(subMonths(now, 11))
-    const endDate = endOfMonth(now)
+    // Calculate date range for all 12 months in user's timezone
+    const currentYear = getYearInTz(now, tz)
+    const currentMonth = getMonthInTz(now, tz)
+
+    // Go back 11 months
+    let startYear = currentMonth >= 11 ? currentYear - 1 : currentYear
+    let startMonth = (currentMonth - 11 + 12) % 12
+
+    const startDateStr = `${startYear}-${String(startMonth + 1).padStart(2, '0')}-01`
+    const startDate = toMidnightUTC(startDateStr, tz)
+
+    // End of current month
+    const nextMonth = currentMonth === 11 ? 0 : currentMonth + 1
+    const nextYear = currentMonth === 11 ? currentYear + 1 : currentYear
+    const endDate = new Date(toMidnightUTC(`${nextYear}-${String(nextMonth + 1).padStart(2, '0')}-01`, tz).getTime() - 1)
 
     // Fetch all transactions in the date range (1 query instead of 24)
     const transactions = await prisma.transaction.findMany({
@@ -131,15 +162,19 @@ export async function getMonthlyData(): Promise<MonthlyData[]> {
 
     // Initialize all 12 months with zero values
     const monthlyMap = new Map<string, { income: number; expenses: number }>()
+    const monthOrder: string[] = []
     for (let i = 11; i >= 0; i--) {
-        const monthDate = subMonths(now, i)
-        const monthKey = format(monthDate, 'MMM')
+        let m = currentMonth - i
+        let y = currentYear
+        if (m < 0) { m += 12; y -= 1 }
+        const monthKey = `${y}-${String(m + 1).padStart(2, '0')}`
         monthlyMap.set(monthKey, { income: 0, expenses: 0 })
+        monthOrder.push(monthKey)
     }
 
     // Group transactions by month in memory
     for (const transaction of transactions) {
-        const monthKey = format(transaction.date, 'MMM')
+        const monthKey = getMonthKeyInTz(transaction.date, tz)
         const monthData = monthlyMap.get(monthKey)
 
         if (monthData) {
@@ -152,20 +187,15 @@ export async function getMonthlyData(): Promise<MonthlyData[]> {
     }
 
     // Convert map to array in correct order
-    const months: MonthlyData[] = []
-    for (let i = 11; i >= 0; i--) {
-        const monthDate = subMonths(now, i)
-        const monthKey = format(monthDate, 'MMM')
+    return monthOrder.map(monthKey => {
         const data = monthlyMap.get(monthKey)!
-
-        months.push({
-            month: monthKey,
+        const label = formatInTz(toMidnightUTC(monthKey + '-01', tz), tz, 'MMM')
+        return {
+            month: label,
             income: data.income,
             expenses: data.expenses,
-        })
-    }
-
-    return months
+        }
+    })
 }
 
 export async function getCategoryBreakdown(
@@ -173,16 +203,16 @@ export async function getCategoryBreakdown(
     endDate?: Date
 ): Promise<CategoryBreakdown[]> {
     const user = await requireAuth()
-    const now = new Date()
-    const monthStart = startDate || startOfMonth(now)
-    const monthEnd = endDate || endOfMonth(now)
+
+    // If no dates provided, queries will use all-time data
+    const dateFilter = startDate && endDate ? { gte: startDate, lte: endDate } : undefined
 
     const expenses = await prisma.transaction.groupBy({
         by: ['categoryId'],
         where: {
             userId: user.id,
             type: TransactionType.EXPENSE,
-            date: { gte: monthStart, lte: monthEnd },
+            ...(dateFilter ? { date: dateFilter } : {}),
             categoryId: { not: null },
         },
         _sum: { amount: true },

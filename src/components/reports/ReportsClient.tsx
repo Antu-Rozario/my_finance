@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { formatCurrency, formatDate, getTransactionTypeBadge } from "@/lib/utils"
+import { toMidnightUTC, toEndOfDayUTC, extractDateStr } from "@/lib/dateUtils"
 import { Badge } from "@/components/ui/badge"
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -53,17 +54,12 @@ interface Account {
 interface ReportsClientProps {
     accounts: Account[]
     currencySymbol: string
+    timezone: string
 }
 
 const COLORS = ['#4285F4', '#DB4437', '#F4B400', '#0F9D58', '#AB47BC', '#00ACC1', '#FF7043', '#9E9D24', '#5C6BC0', '#F06292']
 
-function endOfDay(date: Date): Date {
-    const d = new Date(date)
-    d.setHours(23, 59, 59, 999)
-    return d
-}
-
-export function ReportsClient({ accounts, currencySymbol }: ReportsClientProps) {
+export function ReportsClient({ accounts, currencySymbol, timezone }: ReportsClientProps) {
     const [activeTab, setActiveTab] = useState('income-expense')
     const [isLoading, setIsLoading] = useState(false)
 
@@ -96,12 +92,22 @@ export function ReportsClient({ accounts, currencySymbol }: ReportsClientProps) 
     const [netWorthData, setNetWorthData] = useState<NetWorthData[]>([])
     const [taxSummaryData, setTaxSummaryData] = useState<TaxSummaryData | null>(null)
 
+    // Helper to get timezone-aware date range
+    function getDateRange() {
+        if (!dateRange?.from || !dateRange?.to) return null
+        return {
+            start: toMidnightUTC(extractDateStr(dateRange.from), timezone),
+            end: toEndOfDayUTC(extractDateStr(dateRange.to), timezone),
+        }
+    }
+
     // Existing generators
     async function generateIncomeExpenseReport() {
-        if (!dateRange?.from || !dateRange?.to) return
+        const range = getDateRange()
+        if (!range) return
         setIsLoading(true)
         try {
-            const data = await getIncomeExpenseReport(dateRange.from, endOfDay(dateRange.to))
+            const data = await getIncomeExpenseReport(range.start, range.end, timezone)
             setIncomeExpenseData(data)
         } catch (error) {
             console.error(error)
@@ -111,10 +117,11 @@ export function ReportsClient({ accounts, currencySymbol }: ReportsClientProps) 
     }
 
     async function generateCategoryReport() {
-        if (!dateRange?.from || !dateRange?.to) return
+        const range = getDateRange()
+        if (!range) return
         setIsLoading(true)
         try {
-            const data = await getCategoryReport(dateRange.from, endOfDay(dateRange.to), categoryType)
+            const data = await getCategoryReport(range.start, range.end, categoryType)
             setCategoryData(data)
         } catch (error) {
             console.error(error)
@@ -124,10 +131,11 @@ export function ReportsClient({ accounts, currencySymbol }: ReportsClientProps) 
     }
 
     async function generateAccountStatement() {
-        if (!selectedAccountId || !dateRange?.from || !dateRange?.to) return
+        const range = getDateRange()
+        if (!selectedAccountId || !range) return
         setIsLoading(true)
         try {
-            const data = await getAccountStatement(parseInt(selectedAccountId), dateRange.from, endOfDay(dateRange.to))
+            const data = await getAccountStatement(parseInt(selectedAccountId), range.start, range.end)
             setAccountStatement(data)
         } catch (error) {
             console.error(error)
@@ -137,10 +145,11 @@ export function ReportsClient({ accounts, currencySymbol }: ReportsClientProps) 
     }
 
     async function generateCashFlowReport() {
-        if (!dateRange?.from || !dateRange?.to) return
+        const range = getDateRange()
+        if (!range) return
         setIsLoading(true)
         try {
-            const data = await getCashFlowReport(dateRange.from, endOfDay(dateRange.to))
+            const data = await getCashFlowReport(range.start, range.end, timezone)
             setCashFlowData(data)
         } catch (error) {
             console.error(error)
@@ -151,10 +160,11 @@ export function ReportsClient({ accounts, currencySymbol }: ReportsClientProps) 
 
     // New generators
     async function generatePayeePayerReport() {
-        if (!dateRange?.from || !dateRange?.to) return
+        const range = getDateRange()
+        if (!range) return
         setIsLoading(true)
         try {
-            const data = await getPayeePayerAnalysis(dateRange.from, endOfDay(dateRange.to))
+            const data = await getPayeePayerAnalysis(range.start, range.end)
             setPayeePayerData(data)
         } catch (error) {
             console.error(error)
@@ -164,10 +174,11 @@ export function ReportsClient({ accounts, currencySymbol }: ReportsClientProps) 
     }
 
     async function generateCategoryTrends() {
-        if (!dateRange?.from || !dateRange?.to) return
+        const range = getDateRange()
+        if (!range) return
         setIsLoading(true)
         try {
-            const data = await getCategoryTrends(dateRange.from, endOfDay(dateRange.to), categoryTrendType)
+            const data = await getCategoryTrends(range.start, range.end, categoryTrendType, timezone)
             setCategoryTrendData(data)
         } catch (error) {
             console.error(error)
@@ -177,10 +188,11 @@ export function ReportsClient({ accounts, currencySymbol }: ReportsClientProps) 
     }
 
     async function generatePaymentMethodReport() {
-        if (!dateRange?.from || !dateRange?.to) return
+        const range = getDateRange()
+        if (!range) return
         setIsLoading(true)
         try {
-            const data = await getPaymentMethodBreakdown(dateRange.from, endOfDay(dateRange.to))
+            const data = await getPaymentMethodBreakdown(range.start, range.end)
             setPaymentMethodData(data)
         } catch (error) {
             console.error(error)
@@ -192,11 +204,11 @@ export function ReportsClient({ accounts, currencySymbol }: ReportsClientProps) 
     async function generateYearOverYear() {
         setIsLoading(true)
         try {
-            const p1Start = new Date(parseInt(yoyYear1), 0, 1)
-            const p1End = new Date(parseInt(yoyYear1), 11, 31, 23, 59, 59)
-            const p2Start = new Date(parseInt(yoyYear2), 0, 1)
-            const p2End = new Date(parseInt(yoyYear2), 11, 31, 23, 59, 59)
-            const data = await getYearOverYearComparison(p1Start, p1End, p2Start, p2End)
+            const p1Start = toMidnightUTC(`${yoyYear1}-01-01`, timezone)
+            const p1End = toEndOfDayUTC(`${yoyYear1}-12-31`, timezone)
+            const p2Start = toMidnightUTC(`${yoyYear2}-01-01`, timezone)
+            const p2End = toEndOfDayUTC(`${yoyYear2}-12-31`, timezone)
+            const data = await getYearOverYearComparison(p1Start, p1End, p2Start, p2End, timezone)
             setYoyData(data)
         } catch (error) {
             console.error(error)
@@ -206,10 +218,11 @@ export function ReportsClient({ accounts, currencySymbol }: ReportsClientProps) 
     }
 
     async function generateDailySpending() {
-        if (!dateRange?.from || !dateRange?.to) return
+        const range = getDateRange()
+        if (!range) return
         setIsLoading(true)
         try {
-            const data = await getDailySpendingPattern(dateRange.from, endOfDay(dateRange.to))
+            const data = await getDailySpendingPattern(range.start, range.end, timezone)
             setDailySpendingData(data)
         } catch (error) {
             console.error(error)
@@ -219,10 +232,11 @@ export function ReportsClient({ accounts, currencySymbol }: ReportsClientProps) 
     }
 
     async function generateSavingsRate() {
-        if (!dateRange?.from || !dateRange?.to) return
+        const range = getDateRange()
+        if (!range) return
         setIsLoading(true)
         try {
-            const data = await getSavingsRate(dateRange.from, endOfDay(dateRange.to))
+            const data = await getSavingsRate(range.start, range.end, timezone)
             setSavingsRateData(data)
         } catch (error) {
             console.error(error)
@@ -232,10 +246,11 @@ export function ReportsClient({ accounts, currencySymbol }: ReportsClientProps) 
     }
 
     async function generateNetWorth() {
-        if (!dateRange?.from || !dateRange?.to) return
+        const range = getDateRange()
+        if (!range) return
         setIsLoading(true)
         try {
-            const data = await getNetWorthOverTime(dateRange.from, endOfDay(dateRange.to))
+            const data = await getNetWorthOverTime(range.start, range.end, timezone)
             setNetWorthData(data)
         } catch (error) {
             console.error(error)
@@ -245,10 +260,11 @@ export function ReportsClient({ accounts, currencySymbol }: ReportsClientProps) 
     }
 
     async function generateTaxSummary() {
-        if (!dateRange?.from || !dateRange?.to) return
+        const range = getDateRange()
+        if (!range) return
         setIsLoading(true)
         try {
-            const data = await getTaxSummary(dateRange.from, endOfDay(dateRange.to))
+            const data = await getTaxSummary(range.start, range.end)
             setTaxSummaryData(data)
         } catch (error) {
             console.error(error)
@@ -556,7 +572,7 @@ export function ReportsClient({ accounts, currencySymbol }: ReportsClientProps) 
                                                 </TableRow>
                                                 {accountStatement.transactions.map((t) => (
                                                     <TableRow key={t.id}>
-                                                        <TableCell className="text-xs sm:text-sm">{formatDate(t.date)}</TableCell>
+                                                        <TableCell className="text-xs sm:text-sm">{formatDate(t.date, 'MMM dd, yyyy', timezone)}</TableCell>
                                                         <TableCell className="hidden sm:table-cell">
                                                             <Badge className={getTransactionTypeBadge(t.type)} variant="secondary">
                                                                 {t.type}

@@ -28,6 +28,7 @@ export default async function RecurringPage() {
                     payeesPayers={payeesPayers}
                     paymentMethods={paymentMethods}
                     currencySymbol={settings.currency_code}
+                    timezone={settings.timezone}
                 />
             </div>
         </>

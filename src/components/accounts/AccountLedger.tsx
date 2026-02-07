@@ -31,13 +31,15 @@ interface AccountLedgerProps {
     transactions: Transaction[]
     currentBalance: number
     currencySymbol: string
+    timezone: string
 }
 
 export function AccountLedger({
     account,
     transactions,
     currentBalance,
-    currencySymbol
+    currencySymbol,
+    timezone
 }: AccountLedgerProps) {
     return (
         <div className="space-y-6">
@@ -110,7 +112,7 @@ export function AccountLedger({
                                     {transactions.map((transaction) => (
                                         <TableRow key={transaction.id}>
                                             <TableCell className="font-medium whitespace-nowrap">
-                                                {formatDate(transaction.date)}
+                                                {formatDate(transaction.date, 'MMM dd, yyyy', timezone)}
                                             </TableCell>
                                             <TableCell>
                                                 <Badge className={getTransactionTypeBadge(transaction.type)} variant="secondary">

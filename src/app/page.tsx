@@ -7,6 +7,7 @@ import {
   getRecentTransactions
 } from "@/actions/dashboard"
 import { getSettings } from "@/actions/settings"
+import { toMidnightUTC, toEndOfDayUTC } from "@/lib/dateUtils"
 import { SummaryCards } from "@/components/dashboard/SummaryCards"
 import { IncomeExpenseChart } from "@/components/dashboard/IncomeExpenseChart"
 import { ExpensePieChart } from "@/components/dashboard/ExpensePieChart"
@@ -20,16 +21,17 @@ export default async function DashboardPage({
   searchParams: Promise<{ from?: string; to?: string }>
 }) {
   const { from, to } = await searchParams
-  const startDate = from ? new Date(from) : undefined
-  const endDate = to ? new Date(to) : undefined
+  const settings = await getSettings()
+  const tz = settings.timezone
+  const startDate = from ? toMidnightUTC(from, tz) : undefined
+  const endDate = to ? toEndOfDayUTC(to, tz) : undefined
 
-  const [summary, monthlyData, categoryBreakdown, accountBalances, recentTransactions, settings] = await Promise.all([
-    getDashboardSummary(startDate, endDate),
-    getMonthlyData(),
+  const [summary, monthlyData, categoryBreakdown, accountBalances, recentTransactions] = await Promise.all([
+    getDashboardSummary(startDate, endDate, tz),
+    getMonthlyData(tz),
     getCategoryBreakdown(startDate, endDate),
     getAccountBalances(),
     getRecentTransactions(10, startDate, endDate),
-    getSettings(),
   ])
 
   return (
@@ -50,7 +52,7 @@ export default async function DashboardPage({
 
         <div className="grid gap-6 md:grid-cols-3">
           <div className="md:col-span-2">
-            <RecentTransactions transactions={recentTransactions} currencySymbol={settings.currency_code} />
+            <RecentTransactions transactions={recentTransactions} currencySymbol={settings.currency_code} timezone={tz} />
           </div>
           <AccountBalances accounts={accountBalances} currencySymbol={settings.currency_code} />
         </div>

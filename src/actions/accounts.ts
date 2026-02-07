@@ -5,6 +5,8 @@ import { revalidatePath } from 'next/cache'
 import { AccountFormData, accountSchema } from '@/lib/validators'
 import { TransactionType, PayeePayerType } from '@/generated/prisma/client'
 import { requireAuth } from '@/lib/auth'
+import { toMidnightUTC, formatInTz } from '@/lib/dateUtils'
+import { getSettings } from '@/actions/settings'
 
 export async function getAccounts() {
     const user = await requireAuth()
@@ -76,8 +78,8 @@ export async function getAccountWithTransactions(id: number, startDate?: Date, e
         },
     })
 
-    // Recalculate running balance starting from opening balance
-    let runningBalance = account.openingBalance
+    // Recalculate running balance from transactions (opening balance is stored as a transaction)
+    let runningBalance = 0
     const transactionsWithBalance = transactions.map(t => {
         runningBalance += t.credit - t.debit
         return { ...t, balance: runningBalance }
@@ -105,6 +107,9 @@ export async function createAccount(data: AccountFormData) {
 
     // If opening balance > 0, create an opening balance transaction
     if (validated.openingBalance > 0) {
+        const settings = await getSettings()
+        const todayStr = formatInTz(new Date(), settings.timezone, 'yyyy-MM-dd')
+        const todayMidnight = toMidnightUTC(todayStr, settings.timezone)
         // Get or create System payer for this user
         let systemPayer = await prisma.payeePayer.findFirst({
             where: {
@@ -128,7 +133,7 @@ export async function createAccount(data: AccountFormData) {
             data: {
                 userId: user.id,
                 accountId: account.id,
-                date: new Date(),
+                date: todayMidnight,
                 type: TransactionType.INCOME,
                 amount: validated.openingBalance,
                 payerId: systemPayer.id,

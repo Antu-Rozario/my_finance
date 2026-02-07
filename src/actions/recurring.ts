@@ -4,8 +4,9 @@ import prisma from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { RecurringTransactionFormData, recurringTransactionSchema } from '@/lib/validators'
 import { TransactionType, RecurringStatus, RecurringFrequency } from '@/generated/prisma/client'
-import { getNextOccurrence } from '@/lib/utils'
 import { requireAuth } from '@/lib/auth'
+import { getNextOccurrenceTz, toMidnightUTC, formatInTz } from '@/lib/dateUtils'
+import { getSettings } from '@/actions/settings'
 
 export async function getRecurringTransactions() {
     const user = await requireAuth()
@@ -42,7 +43,9 @@ export async function createRecurringTransaction(data: RecurringTransactionFormD
     const user = await requireAuth()
     const validated = recurringTransactionSchema.parse(data)
 
-    const nextDate = getNextOccurrence(validated.startDate, validated.frequency as RecurringFrequency)
+    const settings = await getSettings()
+    const tz = settings.timezone
+    const nextDate = getNextOccurrenceTz(validated.startDate, validated.frequency as RecurringFrequency, tz)
 
     const recurring = await prisma.recurringTransaction.create({
         data: {
@@ -154,14 +157,19 @@ export async function generateTransactionFromRecurring(id: number) {
         return { success: false, error: 'Recurring transaction not found' }
     }
 
+    const settings = await getSettings()
+    const tz = settings.timezone
     const isIncome = recurring.type === TransactionType.INCOME
+
+    // Determine transaction date
+    const txDate = recurring.nextDate || toMidnightUTC(formatInTz(new Date(), tz, 'yyyy-MM-dd'), tz)
 
     // Create the actual transaction
     const transaction = await prisma.transaction.create({
         data: {
             userId: user.id,
             accountId: recurring.accountId,
-            date: recurring.nextDate || new Date(),
+            date: txDate,
             type: recurring.type,
             categoryId: recurring.categoryId,
             amount: recurring.amount,
@@ -177,9 +185,10 @@ export async function generateTransactionFromRecurring(id: number) {
     })
 
     // Update next occurrence date
-    const newNextDate = getNextOccurrence(
-        recurring.nextDate || new Date(),
-        recurring.frequency
+    const newNextDate = getNextOccurrenceTz(
+        recurring.nextDate || txDate,
+        recurring.frequency,
+        tz
     )
 
     await prisma.recurringTransaction.update({

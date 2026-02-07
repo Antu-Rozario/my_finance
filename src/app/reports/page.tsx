@@ -13,7 +13,7 @@ export default async function ReportsPage() {
         <>
             <Header title="Reports" />
             <div className="p-2 sm:p-4 md:p-6 overflow-hidden">
-                <ReportsClient accounts={accounts} currencySymbol={settings.currency_code} />
+                <ReportsClient accounts={accounts} currencySymbol={settings.currency_code} timezone={settings.timezone} />
             </div>
         </>
     )

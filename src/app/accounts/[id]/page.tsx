@@ -34,6 +34,7 @@ export default async function AccountDetailPage({ params }: AccountDetailPagePro
                     transactions={accountData.transactions}
                     currentBalance={accountData.currentBalance}
                     currencySymbol={settings.currency_code}
+                    timezone={settings.timezone}
                 />
             </div>
         </>

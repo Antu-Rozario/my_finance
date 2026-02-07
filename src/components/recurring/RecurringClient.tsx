@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Badge } from "@/components/ui/badge"
 import { formatCurrency, formatDate, formatDateForInput } from "@/lib/utils"
+import { toMidnightUTC, utcToTzDate } from "@/lib/dateUtils"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Plus, Pencil, Trash2, Loader2, Play } from "lucide-react"
 import {
@@ -81,6 +82,7 @@ interface RecurringClientProps {
     payeesPayers: PayeePayer[]
     paymentMethods: PaymentMethod[]
     currencySymbol: string
+    timezone: string
 }
 
 const frequencyLabels = {
@@ -104,6 +106,7 @@ export function RecurringClient({
     payeesPayers,
     paymentMethods,
     currencySymbol,
+    timezone,
 }: RecurringClientProps) {
     const [isAddOpen, setIsAddOpen] = useState(false)
     const [editItem, setEditItem] = useState<RecurringTransaction | null>(null)
@@ -129,7 +132,7 @@ export function RecurringClient({
                 paymentMethodId: formData.get('paymentMethodId') ? parseInt(formData.get('paymentMethodId') as string) : null,
                 reference: formData.get('reference') as string || null,
                 description: formData.get('description') as string || null,
-                startDate: new Date(formData.get('startDate') as string),
+                startDate: toMidnightUTC(formData.get('startDate') as string, timezone),
                 frequency: formData.get('frequency') as 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY',
                 status: 'PENDING',
             })
@@ -164,7 +167,7 @@ export function RecurringClient({
                 paymentMethodId: formData.get('paymentMethodId') ? parseInt(formData.get('paymentMethodId') as string) : null,
                 reference: formData.get('reference') as string || null,
                 description: formData.get('description') as string || null,
-                startDate: new Date(formData.get('startDate') as string),
+                startDate: toMidnightUTC(formData.get('startDate') as string, timezone),
                 frequency: formData.get('frequency') as 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY',
                 status: formData.get('status') as 'PAID' | 'UNPAID' | 'PENDING' | 'RECEIVE',
             })
@@ -230,7 +233,7 @@ export function RecurringClient({
             return defaultType === 'INCOME' || defaultType === 'EXPENSE' ? defaultType : transactionType
         })
         const [formStartDate, setFormStartDate] = useState<Date | undefined>(
-            defaultValues?.startDate ? new Date(defaultValues.startDate) : new Date()
+            defaultValues?.startDate ? utcToTzDate(new Date(defaultValues.startDate), timezone) : new Date()
         )
 
         return (
@@ -448,7 +451,7 @@ export function RecurringClient({
                                             {formatCurrency(item.amount, currencySymbol)}
                                         </TableCell>
                                         <TableCell>{frequencyLabels[item.frequency]}</TableCell>
-                                        <TableCell>{item.nextDate ? formatDate(item.nextDate) : '-'}</TableCell>
+                                        <TableCell>{item.nextDate ? formatDate(item.nextDate, 'MMM dd, yyyy', timezone) : '-'}</TableCell>
                                         <TableCell>
                                             <Badge className={statusColors[item.status]} variant="secondary">
                                                 {item.status}

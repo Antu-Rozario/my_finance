@@ -1,6 +1,7 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { format, parseISO } from "date-fns"
+import { utcToTzDate } from "@/lib/dateUtils"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -22,16 +23,18 @@ export function formatCurrency(amount: number, currencySymbol: string = '$'): st
 /**
  * Format a date for display
  */
-export function formatDate(date: Date | string, formatStr: string = 'MMM dd, yyyy'): string {
-  const dateObj = typeof date === 'string' ? parseISO(date) : date
+export function formatDate(date: Date | string, formatStr: string = 'MMM dd, yyyy', tz?: string): string {
+  let dateObj = typeof date === 'string' ? parseISO(date) : date
+  if (tz) dateObj = utcToTzDate(dateObj, tz)
   return format(dateObj, formatStr)
 }
 
 /**
  * Format a date for input fields (YYYY-MM-DD)
  */
-export function formatDateForInput(date: Date | string): string {
-  const dateObj = typeof date === 'string' ? parseISO(date) : date
+export function formatDateForInput(date: Date | string, tz?: string): string {
+  let dateObj = typeof date === 'string' ? parseISO(date) : date
+  if (tz) dateObj = utcToTzDate(dateObj, tz)
   return format(dateObj, 'yyyy-MM-dd')
 }
 

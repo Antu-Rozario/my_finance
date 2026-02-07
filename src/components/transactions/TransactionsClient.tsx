@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { formatCurrency, formatDate, formatDateForInput, getTransactionTypeBadge } from "@/lib/utils"
+import { toMidnightUTC, toEndOfDayUTC, extractDateStr, utcToTzDate } from "@/lib/dateUtils"
 import { DatePicker } from "@/components/ui/date-picker"
 import { DateRangePicker, type DateRange } from "@/components/ui/date-range-picker"
 import { Plus, Pencil, Trash2, Loader2, ChevronLeft, ChevronRight, Search, ArrowUpDown, ArrowUp, ArrowDown, X, Download } from "lucide-react"
@@ -101,18 +102,6 @@ interface TransactionsClientProps {
     timezone: string
 }
 
-function parseDateInTimezone(dateStr: string, tz: string): Date {
-    const [year, month, day] = dateStr.split('-').map(Number)
-    // Start with noon UTC as a baseline
-    const utcNoon = new Date(Date.UTC(year, month - 1, day, 12, 0, 0))
-    // Determine the offset between UTC and the target timezone at this instant
-    const utcParts = new Intl.DateTimeFormat('en-CA', { timeZone: 'UTC', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(utcNoon)
-    const tzParts = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(utcNoon)
-    const toMs = (s: string) => new Date(s.replace(', ', 'T')).getTime()
-    const offset = toMs(utcParts) - toMs(tzParts)
-    // Shift so that noon lands in the target timezone
-    return new Date(utcNoon.getTime() + offset)
-}
 
 export function TransactionsClient({
     initialTransactions,
@@ -202,8 +191,8 @@ export function TransactionsClient({
         setFilterDateRange(range)
         setActiveFilters(prev => ({
             ...prev,
-            startDate: range?.from || undefined,
-            endDate: range?.to ? new Date(range.to.getFullYear(), range.to.getMonth(), range.to.getDate(), 23, 59, 59) : undefined,
+            startDate: range?.from ? toMidnightUTC(extractDateStr(range.from), timezone) : undefined,
+            endDate: range?.to ? toEndOfDayUTC(extractDateStr(range.to), timezone) : undefined,
         }))
     }, [])
 
@@ -301,16 +290,16 @@ export function TransactionsClient({
             transferTo: t.transferToAccount?.name || '',
         }))
 
-        exportTransactionsToCSV(transactionsToExport)
+        exportTransactionsToCSV(transactionsToExport, timezone)
         toast.success("Transactions exported successfully")
-    }, [cursorData.transactions])
+    }, [cursorData.transactions, timezone])
 
     async function handleCreate(formData: FormData) {
         setIsLoading(true)
         try {
             const result = await createTransaction({
                 accountId: parseInt(formData.get('accountId') as string),
-                date: parseDateInTimezone(formData.get('date') as string, timezone),
+                date: toMidnightUTC(formData.get('date') as string, timezone),
                 type: formData.get('type') as 'INCOME' | 'EXPENSE' | 'TRANSFER',
                 categoryId: formData.get('categoryId') ? parseInt(formData.get('categoryId') as string) : null,
                 amount: parseFloat(formData.get('amount') as string),
@@ -346,7 +335,7 @@ export function TransactionsClient({
             const type = formData.get('type') as 'INCOME' | 'EXPENSE' | 'TRANSFER'
             const result = await updateTransaction(editTransaction.id, {
                 accountId: parseInt(formData.get('accountId') as string),
-                date: parseDateInTimezone(formData.get('date') as string, timezone),
+                date: toMidnightUTC(formData.get('date') as string, timezone),
                 type,
                 categoryId: formData.get('categoryId') ? parseInt(formData.get('categoryId') as string) : null,
                 amount: parseFloat(formData.get('amount') as string),
@@ -439,7 +428,7 @@ export function TransactionsClient({
             defaultValues?.type || transactionType
         )
         const [formDate, setFormDate] = useState<Date | undefined>(
-            defaultValues?.date ? new Date(defaultValues.date) : new Date()
+            defaultValues?.date ? utcToTzDate(new Date(defaultValues.date), timezone) : new Date()
         )
 
         const handleFormSubmit = (formData: FormData) => {
@@ -849,7 +838,7 @@ export function TransactionsClient({
                                             <Badge className={`${getTransactionTypeBadge(transaction.type)} text-[10px] px-1.5 py-0 shrink-0`} variant="secondary">
                                                 {transaction.type}
                                             </Badge>
-                                            <span className="text-[11px] text-muted-foreground truncate">{formatDate(transaction.date)}</span>
+                                            <span className="text-[11px] text-muted-foreground truncate">{formatDate(transaction.date, 'MMM dd, yyyy', timezone)}</span>
                                         </div>
                                         <p className={`font-semibold text-sm shrink-0 ${transaction.type === 'INCOME'
                                             ? 'text-green-600 dark:text-green-400'
@@ -956,7 +945,7 @@ export function TransactionsClient({
                                                 />
                                             </TableCell>
                                             <TableCell className="whitespace-nowrap">
-                                                {formatDate(transaction.date)}
+                                                {formatDate(transaction.date, 'MMM dd, yyyy', timezone)}
                                             </TableCell>
                                             <TableCell>{transaction.account.name}</TableCell>
                                             <TableCell>

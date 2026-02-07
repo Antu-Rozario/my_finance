@@ -21,9 +21,10 @@ interface Transaction {
 interface RecentTransactionsProps {
     transactions: Transaction[]
     currencySymbol: string
+    timezone: string
 }
 
-export function RecentTransactions({ transactions, currencySymbol }: RecentTransactionsProps) {
+export function RecentTransactions({ transactions, currencySymbol, timezone }: RecentTransactionsProps) {
     if (transactions.length === 0) {
         return (
             <Card>
@@ -69,7 +70,7 @@ export function RecentTransactions({ transactions, currencySymbol }: RecentTrans
                         {transactions.map((transaction) => (
                             <TableRow key={transaction.id}>
                                 <TableCell className="font-medium">
-                                    {formatDate(transaction.date)}
+                                    {formatDate(transaction.date, 'MMM dd, yyyy', timezone)}
                                 </TableCell>
                                 <TableCell>{transaction.account.name}</TableCell>
                                 <TableCell>

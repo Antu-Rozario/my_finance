@@ -1,11 +1,13 @@
 import { format } from 'date-fns'
+import { formatInTz } from '@/lib/dateUtils'
 
 /**
  * Converts an array of objects to CSV format
  */
 function arrayToCSV<T extends Record<string, unknown>>(
   data: T[],
-  headers: { key: keyof T; label: string }[]
+  headers: { key: keyof T; label: string }[],
+  tz?: string
 ): string {
   // Create CSV header row
   const headerRow = headers.map(h => escapeCSVValue(h.label)).join(',')
@@ -15,7 +17,7 @@ function arrayToCSV<T extends Record<string, unknown>>(
     return headers
       .map(h => {
         const value = row[h.key]
-        return escapeCSVValue(formatValue(value))
+        return escapeCSVValue(formatValue(value, tz))
       })
       .join(',')
   })
@@ -37,13 +39,13 @@ function escapeCSVValue(value: string): string {
 /**
  * Formats a value for CSV export
  */
-function formatValue(value: unknown): string {
+function formatValue(value: unknown, tz?: string): string {
   if (value === null || value === undefined) {
     return ''
   }
 
   if (value instanceof Date) {
-    return format(value, 'yyyy-MM-dd HH:mm:ss')
+    return tz ? formatInTz(value, tz, 'yyyy-MM-dd') : format(value, 'yyyy-MM-dd HH:mm:ss')
   }
 
   if (typeof value === 'boolean') {
@@ -97,6 +99,7 @@ interface TransactionForExport extends Record<string, unknown> {
  */
 export function exportTransactionsToCSV(
   transactions: TransactionForExport[],
+  tz?: string,
   filename: string = `transactions-${format(new Date(), 'yyyy-MM-dd')}.csv`
 ): void {
   const headers = [
@@ -113,7 +116,7 @@ export function exportTransactionsToCSV(
     { key: 'transferTo' as const, label: 'Transfer To' },
   ]
 
-  const csvContent = arrayToCSV(transactions, headers)
+  const csvContent = arrayToCSV(transactions, headers, tz)
   downloadCSV(csvContent, filename)
 }
 
@@ -195,6 +198,7 @@ export function exportCategoryReport(
 export function exportAccountStatement(
   data: AccountStatementRow[],
   accountName: string,
+  tz?: string,
   filename?: string
 ): void {
   const defaultFilename = `${accountName.toLowerCase().replace(/\s+/g, '-')}-statement-${format(new Date(), 'yyyy-MM-dd')}.csv`
@@ -209,7 +213,7 @@ export function exportAccountStatement(
     { key: 'balance' as const, label: 'Balance' },
   ]
 
-  const csvContent = arrayToCSV(data, headers)
+  const csvContent = arrayToCSV(data, headers, tz)
   downloadCSV(csvContent, filename || defaultFilename)
 }
 

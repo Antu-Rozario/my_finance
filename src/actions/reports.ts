@@ -2,8 +2,8 @@
 
 import prisma from '@/lib/prisma'
 import { TransactionType } from '@/generated/prisma/client'
-import { endOfMonth, format } from 'date-fns'
 import { requireAuth } from '@/lib/auth'
+import { getMonthKeyInTz, formatInTz, toMidnightUTC, getDayOfWeekInTz, getMonthInTz, getYearInTz } from '@/lib/dateUtils'
 
 export type IncomeExpenseData = {
     month: string
@@ -28,7 +28,7 @@ export type CashFlowData = {
     closingBalance: number
 }
 
-export async function getIncomeExpenseReport(startDate: Date, endDate: Date) {
+export async function getIncomeExpenseReport(startDate: Date, endDate: Date, tz: string) {
     const user = await requireAuth()
     const transactions = await prisma.transaction.findMany({
         where: {
@@ -43,7 +43,7 @@ export async function getIncomeExpenseReport(startDate: Date, endDate: Date) {
     const monthlyData = new Map<string, { income: number; expenses: number }>()
 
     for (const t of transactions) {
-        const monthKey = format(t.date, 'yyyy-MM')
+        const monthKey = getMonthKeyInTz(t.date, tz)
         const existing = monthlyData.get(monthKey) || { income: 0, expenses: 0 }
 
         if (t.type === TransactionType.INCOME) {
@@ -66,7 +66,7 @@ export async function getIncomeExpenseReport(startDate: Date, endDate: Date) {
         totalIncome += data.income
         totalExpenses += data.expenses
         result.push({
-            month: format(new Date(key + '-01T12:00:00'), 'MMM yyyy'),
+            month: formatInTz(toMidnightUTC(key + '-01', tz), tz, 'MMM yyyy'),
             income: data.income,
             expenses: data.expenses,
             net: data.income - data.expenses,
@@ -250,7 +250,7 @@ export type CategoryTrendResult = {
     categories: string[]
 }
 
-export async function getCategoryTrends(startDate: Date, endDate: Date, type: 'INCOME' | 'EXPENSE'): Promise<CategoryTrendResult> {
+export async function getCategoryTrends(startDate: Date, endDate: Date, type: 'INCOME' | 'EXPENSE', tz: string): Promise<CategoryTrendResult> {
     const user = await requireAuth()
 
     const transactions = await prisma.transaction.findMany({
@@ -268,7 +268,7 @@ export async function getCategoryTrends(startDate: Date, endDate: Date, type: 'I
     const monthCategoryMap = new Map<string, Map<string, number>>()
 
     for (const t of transactions) {
-        const monthKey = format(t.date, 'yyyy-MM')
+        const monthKey = getMonthKeyInTz(t.date, tz)
         const catName = t.category?.name || 'Unknown'
         categoryNames.add(catName)
 
@@ -281,7 +281,7 @@ export async function getCategoryTrends(startDate: Date, endDate: Date, type: 'I
     const sortedMonths = Array.from(monthCategoryMap.keys()).sort()
 
     const data: CategoryTrendData[] = sortedMonths.map(monthKey => {
-        const row: CategoryTrendData = { month: format(new Date(monthKey + '-01T12:00:00'), 'MMM yyyy') }
+        const row: CategoryTrendData = { month: formatInTz(toMidnightUTC(monthKey + '-01', tz), tz, 'MMM yyyy') }
         const catMap = monthCategoryMap.get(monthKey)!
         for (const cat of categories) {
             row[cat] = catMap.get(cat) || 0
@@ -358,7 +358,8 @@ export type YearOverYearResult = {
 
 export async function getYearOverYearComparison(
     period1Start: Date, period1End: Date,
-    period2Start: Date, period2End: Date
+    period2Start: Date, period2End: Date,
+    tz: string
 ): Promise<YearOverYearResult> {
     const user = await requireAuth()
 
@@ -374,7 +375,7 @@ export async function getYearOverYearComparison(
     function groupByMonth(transactions: typeof p1Transactions) {
         const map = new Map<number, { income: number; expenses: number }>()
         for (const t of transactions) {
-            const m = t.date.getMonth()
+            const m = getMonthInTz(t.date, tz)
             const existing = map.get(m) || { income: 0, expenses: 0 }
             if (t.type === TransactionType.INCOME) existing.income += t.amount
             else existing.expenses += t.amount
@@ -397,8 +398,8 @@ export async function getYearOverYearComparison(
 
     return {
         data,
-        period1Label: format(period1Start, 'yyyy'),
-        period2Label: format(period2Start, 'yyyy'),
+        period1Label: String(getYearInTz(period1Start, tz)),
+        period2Label: String(getYearInTz(period2Start, tz)),
         totals: {
             period1Income: p1Transactions.filter(t => t.type === TransactionType.INCOME).reduce((s, t) => s + t.amount, 0),
             period1Expenses: p1Transactions.filter(t => t.type === TransactionType.EXPENSE).reduce((s, t) => s + t.amount, 0),
@@ -416,7 +417,7 @@ export type DailySpendingPatternData = {
     transactionCount: number
 }
 
-export async function getDailySpendingPattern(startDate: Date, endDate: Date): Promise<DailySpendingPatternData[]> {
+export async function getDailySpendingPattern(startDate: Date, endDate: Date, tz: string): Promise<DailySpendingPatternData[]> {
     const user = await requireAuth()
 
     const transactions = await prisma.transaction.findMany({
@@ -427,8 +428,8 @@ export async function getDailySpendingPattern(startDate: Date, endDate: Date): P
     for (let i = 0; i < 7; i++) dayMap.set(i, { total: 0, count: 0, weeks: new Set() })
 
     for (const t of transactions) {
-        const dayOfWeek = t.date.getDay()
-        const weekKey = format(t.date, 'yyyy-ww')
+        const dayOfWeek = getDayOfWeekInTz(t.date, tz)
+        const weekKey = formatInTz(t.date, tz, 'yyyy-ww')
         const existing = dayMap.get(dayOfWeek)!
         existing.total += t.amount
         existing.count += 1
@@ -452,7 +453,7 @@ export type SavingsRateData = {
     savingsRate: number
 }
 
-export async function getSavingsRate(startDate: Date, endDate: Date): Promise<SavingsRateData[]> {
+export async function getSavingsRate(startDate: Date, endDate: Date, tz: string): Promise<SavingsRateData[]> {
     const user = await requireAuth()
 
     const transactions = await prisma.transaction.findMany({
@@ -462,7 +463,7 @@ export async function getSavingsRate(startDate: Date, endDate: Date): Promise<Sa
 
     const monthlyData = new Map<string, { income: number; expenses: number }>()
     for (const t of transactions) {
-        const monthKey = format(t.date, 'yyyy-MM')
+        const monthKey = getMonthKeyInTz(t.date, tz)
         const existing = monthlyData.get(monthKey) || { income: 0, expenses: 0 }
         if (t.type === TransactionType.INCOME) existing.income += t.amount
         else existing.expenses += t.amount
@@ -473,7 +474,7 @@ export async function getSavingsRate(startDate: Date, endDate: Date): Promise<Sa
         const data = monthlyData.get(key)!
         const savings = data.income - data.expenses
         return {
-            month: format(new Date(key + '-01T12:00:00'), 'MMM yyyy'),
+            month: formatInTz(toMidnightUTC(key + '-01', tz), tz, 'MMM yyyy'),
             income: data.income,
             expenses: data.expenses,
             savings,
@@ -488,7 +489,7 @@ export type NetWorthData = {
     netWorth: number
 }
 
-export async function getNetWorthOverTime(startDate: Date, endDate: Date): Promise<NetWorthData[]> {
+export async function getNetWorthOverTime(startDate: Date, endDate: Date, tz: string): Promise<NetWorthData[]> {
     const user = await requireAuth()
 
     const accounts = await prisma.financeAccount.findMany({ where: { userId: user.id } })
@@ -506,12 +507,22 @@ export async function getNetWorthOverTime(startDate: Date, endDate: Date): Promi
         txByAccount.get(t.accountId)!.push(t)
     }
 
-    // Generate month-end dates
+    // Generate month-end dates in the user's timezone
+    const startYear = getYearInTz(startDate, tz)
+    const startMonth = getMonthInTz(startDate, tz)
     const months: Date[] = []
-    let current = new Date(startDate.getFullYear(), startDate.getMonth(), 1)
-    while (current <= endDate) {
-        months.push(endOfMonth(current))
-        current = new Date(current.getFullYear(), current.getMonth() + 1, 1)
+    let curYear = startYear
+    let curMonth = startMonth
+    while (true) {
+        // End of month = midnight of first day of NEXT month minus 1ms
+        const nextMonth = curMonth === 11 ? 0 : curMonth + 1
+        const nextYear = curMonth === 11 ? curYear + 1 : curYear
+        const nextMonthStr = `${nextYear}-${String(nextMonth + 1).padStart(2, '0')}-01`
+        const monthEnd = new Date(toMidnightUTC(nextMonthStr, tz).getTime() - 1)
+        if (monthEnd > endDate) break
+        months.push(monthEnd)
+        curMonth = nextMonth
+        curYear = nextYear
     }
 
     return months.map(monthEnd => {
@@ -524,7 +535,7 @@ export async function getNetWorthOverTime(startDate: Date, endDate: Date): Promi
             }
             netWorth += balance
         }
-        return { month: format(monthEnd, 'MMM yyyy'), netWorth }
+        return { month: formatInTz(monthEnd, tz, 'MMM yyyy'), netWorth }
     })
 }
 
@@ -576,7 +587,7 @@ export async function getTaxSummary(startDate: Date, endDate: Date): Promise<Tax
     }
 }
 
-export async function getCashFlowReport(startDate: Date, endDate: Date) {
+export async function getCashFlowReport(startDate: Date, endDate: Date, tz: string) {
     const user = await requireAuth()
 
     // Calculate total opening balance (before start date)
@@ -604,7 +615,7 @@ export async function getCashFlowReport(startDate: Date, endDate: Date) {
     const monthlyData = new Map<string, { income: number; expenses: number }>()
 
     for (const t of transactions) {
-        const monthKey = format(t.date, 'yyyy-MM')
+        const monthKey = getMonthKeyInTz(t.date, tz)
         const existing = monthlyData.get(monthKey) || { income: 0, expenses: 0 }
 
         if (t.type === TransactionType.INCOME) {
@@ -626,7 +637,7 @@ export async function getCashFlowReport(startDate: Date, endDate: Date) {
         const closingBalance = currentBalance + netChange
 
         result.push({
-            month: format(new Date(key + '-01T12:00:00'), 'MMM yyyy'),
+            month: formatInTz(toMidnightUTC(key + '-01', tz), tz, 'MMM yyyy'),
             openingBalance: currentBalance,
             totalIncome: data.income,
             totalExpenses: data.expenses,

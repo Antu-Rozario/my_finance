@@ -14,19 +14,19 @@ export function DashboardFilters() {
     const to = searchParams.get("to")
 
     const dateRange: DateRange | undefined = from && to ? {
-        from: new Date(from),
-        to: new Date(to)
+        from: new Date(from + 'T12:00:00'),
+        to: new Date(to + 'T12:00:00')
     } : undefined
 
     const handleDateChange = (range: DateRange | undefined) => {
         const params = new URLSearchParams(searchParams.toString())
         if (range?.from) {
-            params.set("from", range.from.toISOString())
+            params.set("from", format(range.from, 'yyyy-MM-dd'))
         } else {
             params.delete("from")
         }
         if (range?.to) {
-            params.set("to", range.to.toISOString())
+            params.set("to", format(range.to, 'yyyy-MM-dd'))
         } else {
             params.delete("to")
         }
