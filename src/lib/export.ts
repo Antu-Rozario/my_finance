@@ -232,6 +232,43 @@ export function exportCashFlowReport(
   downloadCSV(csvContent, filename)
 }
 
+// Tax Summary types
+interface TaxSummaryRow extends Record<string, unknown> {
+  category: string
+  type: string
+  amount: number
+  transactionCount: number
+}
+
+/**
+ * Exports tax summary report to CSV
+ */
+export function exportTaxSummaryToCSV(
+  data: { categories: { name: string; type: string; amount: number; transactionCount: number }[]; totalIncome: number; totalExpenses: number; netTaxable: number },
+  filename: string = `tax-summary-${format(new Date(), 'yyyy-MM-dd')}.csv`
+): void {
+  const rows: TaxSummaryRow[] = data.categories.map(c => ({
+    category: c.name,
+    type: c.type,
+    amount: c.amount,
+    transactionCount: c.transactionCount,
+  }))
+
+  const headers = [
+    { key: 'category' as const, label: 'Category' },
+    { key: 'type' as const, label: 'Type' },
+    { key: 'amount' as const, label: 'Amount' },
+    { key: 'transactionCount' as const, label: 'Transactions' },
+  ]
+
+  let csv = arrayToCSV(rows, headers)
+  csv += `\n\nTotal Income,,${data.totalIncome},`
+  csv += `\nTotal Expenses,,${data.totalExpenses},`
+  csv += `\nNet Taxable,,${data.netTaxable},`
+
+  downloadCSV(csv, filename)
+}
+
 /**
  * Generic export function for custom reports
  */
