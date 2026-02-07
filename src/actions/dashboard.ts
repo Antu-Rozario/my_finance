@@ -135,7 +135,7 @@ export async function getMonthlyData(tz: string): Promise<MonthlyData[]> {
     const currentMonth = getMonthInTz(now, tz)
 
     // Go back 11 months
-    let startYear = currentMonth >= 11 ? currentYear - 1 : currentYear
+    let startYear = currentMonth < 11 ? currentYear - 1 : currentYear
     let startMonth = (currentMonth - 11 + 12) % 12
 
     const startDateStr = `${startYear}-${String(startMonth + 1).padStart(2, '0')}-01`

@@ -8,23 +8,23 @@ export function toMidnightUTC(dateStr: string, tz: string): Date {
     const [year, month, day] = dateStr.split('-').map(Number)
     const utcMidnight = new Date(Date.UTC(year, month - 1, day, 0, 0, 0))
 
-    const formatter = new Intl.DateTimeFormat('en-CA', {
+    const parts = new Intl.DateTimeFormat('en-US', {
         timeZone: tz,
         year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
+        month: 'numeric',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: 'numeric',
+        second: 'numeric',
         hour12: false,
-    })
+    }).formatToParts(utcMidnight)
 
-    const tzStr = formatter.format(utcMidnight)
-    const [tzDate, tzTime] = tzStr.split(', ')
-    const tzLocal = new Date(tzDate + 'T' + tzTime).getTime()
-    const utcLocal = new Date(
-        `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00`
-    ).getTime()
+    const get = (type: string) => parseInt(parts.find(p => p.type === type)?.value || '0')
+    let tzHour = get('hour')
+    if (tzHour === 24) tzHour = 0
+
+    const tzLocal = new Date(get('year'), get('month') - 1, get('day'), tzHour, get('minute'), get('second')).getTime()
+    const utcLocal = new Date(year, month - 1, day, 0, 0, 0).getTime()
 
     const offset = utcLocal - tzLocal
     return new Date(utcMidnight.getTime() + offset)
@@ -53,22 +53,27 @@ export function extractDateStr(date: Date): string {
  * the wall-clock time in the target timezone. This allows using date-fns
  * format() and getting timezone-correct output.
  *
+ * Uses formatToParts() for consistent behavior across Node.js and browsers.
+ *
  * e.g., 2026-02-07T05:00:00Z in "America/Toronto" → Date that formats as "Feb 07, 2026"
  */
 export function utcToTzDate(date: Date, tz: string): Date {
-    const formatter = new Intl.DateTimeFormat('en-CA', {
+    const parts = new Intl.DateTimeFormat('en-US', {
         timeZone: tz,
         year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
+        month: 'numeric',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: 'numeric',
+        second: 'numeric',
         hour12: false,
-    })
-    const str = formatter.format(date)
-    const [datePart, timePart] = str.split(', ')
-    return new Date(datePart + 'T' + timePart)
+    }).formatToParts(date)
+
+    const get = (type: string) => parseInt(parts.find(p => p.type === type)?.value || '0')
+    let hour = get('hour')
+    if (hour === 24) hour = 0
+
+    return new Date(get('year'), get('month') - 1, get('day'), hour, get('minute'), get('second'))
 }
 
 /**
