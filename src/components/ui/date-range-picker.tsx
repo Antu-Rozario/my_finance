@@ -19,6 +19,11 @@ interface DateRangePickerProps {
 }
 
 export function DateRangePicker({ value, onChange, placeholder = "Pick date range", className, disabled }: DateRangePickerProps) {
+    // Show the month before 'to' so the 2-month view covers the end of the range
+    const defaultMonth = value?.to
+        ? new Date(value.to.getFullYear(), value.to.getMonth() - 1, 1)
+        : value?.from
+
     return (
         <Popover>
             <PopoverTrigger asChild>
@@ -49,7 +54,10 @@ export function DateRangePicker({ value, onChange, placeholder = "Pick date rang
                     selected={value}
                     onSelect={onChange}
                     numberOfMonths={2}
-                    defaultMonth={value?.from}
+                    captionLayout="dropdown"
+                    defaultMonth={defaultMonth}
+                    startMonth={new Date(2020, 0)}
+                    endMonth={new Date(new Date().getFullYear() + 1, 11)}
                 />
             </PopoverContent>
         </Popover>

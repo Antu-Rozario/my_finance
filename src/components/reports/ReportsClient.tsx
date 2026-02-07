@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { DateRangePicker, type DateRange } from "@/components/ui/date-range-picker"
+import { DatePicker } from "@/components/ui/date-picker"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
@@ -64,12 +64,13 @@ export function ReportsClient({ accounts, currencySymbol, timezone }: ReportsCli
     const [isLoading, setIsLoading] = useState(false)
 
     // Date range state
-    const [dateRange, setDateRange] = useState<DateRange>(() => {
-        const from = new Date()
-        from.setMonth(from.getMonth() - 11)
-        from.setDate(1)
-        return { from, to: new Date() }
+    const [fromDate, setFromDate] = useState<Date>(() => {
+        const d = new Date()
+        d.setMonth(d.getMonth() - 11)
+        d.setDate(1)
+        return d
     })
+    const [toDate, setToDate] = useState<Date>(new Date())
 
     // Existing report data
     const [incomeExpenseData, setIncomeExpenseData] = useState<{ data: IncomeExpenseData[]; totals: { totalIncome: number; totalExpenses: number; net: number } } | null>(null)
@@ -94,10 +95,10 @@ export function ReportsClient({ accounts, currencySymbol, timezone }: ReportsCli
 
     // Helper to get timezone-aware date range
     function getDateRange() {
-        if (!dateRange?.from || !dateRange?.to) return null
+        if (!fromDate || !toDate) return null
         return {
-            start: toMidnightUTC(extractDateStr(dateRange.from), timezone),
-            end: toEndOfDayUTC(extractDateStr(dateRange.to), timezone),
+            start: toMidnightUTC(extractDateStr(fromDate), timezone),
+            end: toEndOfDayUTC(extractDateStr(toDate), timezone),
         }
     }
 
@@ -316,11 +317,21 @@ export function ReportsClient({ accounts, currencySymbol, timezone }: ReportsCli
                     {/* Controls row */}
                     <div className="flex items-center gap-1.5 sm:gap-2 mb-2.5 sm:mb-6 flex-wrap">
                         {activeTab !== 'year-over-year' && (
-                            <DateRangePicker
-                                value={dateRange}
-                                onChange={(range) => setDateRange(range ?? { from: undefined, to: undefined })}
-                                className="h-7 sm:h-8 text-[11px] sm:text-sm"
-                            />
+                            <>
+                                <DatePicker
+                                    value={fromDate}
+                                    onChange={(date) => date && setFromDate(date)}
+                                    placeholder="From"
+                                    className="h-7 sm:h-8 text-[11px] sm:text-sm"
+                                />
+                                <span className="text-muted-foreground text-xs">-</span>
+                                <DatePicker
+                                    value={toDate}
+                                    onChange={(date) => date && setToDate(date)}
+                                    placeholder="To"
+                                    className="h-7 sm:h-8 text-[11px] sm:text-sm"
+                                />
+                            </>
                         )}
 
                         {activeTab === 'category' && (
