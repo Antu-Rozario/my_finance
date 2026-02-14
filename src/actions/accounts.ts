@@ -16,14 +16,13 @@ export async function getAccounts() {
         orderBy: { name: 'asc' },
     })
 
-    // Get the latest transaction for each account to get current balance
+    // Calculate current balance for each account by summing credits - debits
     const accountsWithBalances = await Promise.all(
         accounts.map(async (account) => {
-            const [latestTransaction, transactionCount] = await Promise.all([
-                prisma.transaction.findFirst({
+            const [result, transactionCount] = await Promise.all([
+                prisma.transaction.aggregate({
                     where: { accountId: account.id, userId: user.id },
-                    orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
-                    select: { balance: true },
+                    _sum: { credit: true, debit: true },
                 }),
                 prisma.transaction.count({
                     where: { accountId: account.id, userId: user.id },
@@ -32,7 +31,7 @@ export async function getAccounts() {
 
             return {
                 ...account,
-                currentBalance: latestTransaction?.balance ?? account.openingBalance,
+                currentBalance: (result._sum.credit || 0) - (result._sum.debit || 0),
                 transactionCount,
             }
         })

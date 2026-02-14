@@ -285,8 +285,8 @@ async function recalculateAccountBalances(userId: string, accountId: number, fro
         select: { id: true, credit: true, debit: true, balance: true },
     })
 
-    // Calculate all balances in-memory, starting from opening balance
-    let runningBalance = account.openingBalance
+    // Calculate all balances in-memory (opening balance is already stored as a transaction)
+    let runningBalance = 0
     const updates: { id: number; balance: number }[] = []
 
     for (const transaction of transactions) {

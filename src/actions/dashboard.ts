@@ -107,15 +107,14 @@ export async function getDashboardSummary(
     const totalIncome = incomeResult._sum.amount || 0
     const totalExpenses = expenseResult._sum.amount || 0
 
-    // Calculate total account balance by getting latest transaction for each account
+    // Calculate total account balance by summing all credits - debits
     let totalAccountBalance = 0
     for (const account of accounts) {
-        const latestTransaction = await prisma.transaction.findFirst({
+        const result = await prisma.transaction.aggregate({
             where: { accountId: account.id, userId: user.id },
-            orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
-            select: { balance: true },
+            _sum: { credit: true, debit: true },
         })
-        totalAccountBalance += latestTransaction?.balance ?? account.openingBalance
+        totalAccountBalance += (result._sum.credit || 0) - (result._sum.debit || 0)
     }
 
     return {
@@ -254,19 +253,18 @@ export async function getAccountBalances(): Promise<AccountBalance[]> {
         orderBy: { name: 'asc' },
     })
 
-    // Get latest transaction balance for each account
+    // Calculate balance for each account by summing credits - debits
     const accountBalances = await Promise.all(
         accounts.map(async (account) => {
-            const latestTransaction = await prisma.transaction.findFirst({
+            const result = await prisma.transaction.aggregate({
                 where: { accountId: account.id, userId: user.id },
-                orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
-                select: { balance: true },
+                _sum: { credit: true, debit: true },
             })
 
             return {
                 id: account.id,
                 name: account.name,
-                balance: latestTransaction?.balance ?? account.openingBalance,
+                balance: (result._sum.credit || 0) - (result._sum.debit || 0),
             }
         })
     )
